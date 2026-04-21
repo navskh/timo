@@ -1,0 +1,206 @@
+@import "tailwindcss";
+
+:root {
+  --bg: #0a0a0c;
+  --surface-1: #0f0f13;
+  --surface-2: #15151a;
+  --surface-3: #1c1c22;
+  --surface-4: #252530;
+  --border: #26262e;
+  --border-strong: #34343f;
+  --foreground: #ededed;
+  --fg-muted: #9ca0aa;
+  --fg-dim: #64656d;
+  --accent: #8b5cf6;
+  --accent-soft: #a78bfa;
+  --accent-bg: rgba(139, 92, 246, 0.12);
+
+  /* legacy aliases kept for existing components */
+  --background: var(--bg);
+  --muted: var(--surface-2);
+}
+
+html, body {
+  background: var(--bg);
+  color: var(--foreground);
+  font-family: ui-sans-serif, -apple-system, BlinkMacSystemFont, "Pretendard", "SF Pro Text", "Segoe UI", sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  font-feature-settings: "cv11", "ss01";
+  overflow: hidden;
+}
+
+* { box-sizing: border-box; }
+
+button { cursor: pointer; }
+button:disabled { cursor: not-allowed; }
+
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+.mono {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, "Courier New", monospace;
+}
+
+/* Scrollbar styling — muted by default, violet on hover. Applies app-wide. */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #3a3a42 transparent;
+}
+*:hover {
+  scrollbar-color: #5b4a8a transparent;
+}
+
+*::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+*::-webkit-scrollbar-thumb {
+  background: #2e2e35;
+  border: 2px solid transparent;
+  border-radius: 8px;
+  background-clip: padding-box;
+  transition: background 0.15s;
+}
+*::-webkit-scrollbar-thumb:hover {
+  background: #5b4a8a;
+  background-clip: padding-box;
+}
+*::-webkit-scrollbar-thumb:active {
+  background: #7c5fc7;
+  background-clip: padding-box;
+}
+*::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+/* Markdown body — applies to assistant text blocks. */
+.md-body { color: #e8e8ec; }
+.md-body > *:first-child { margin-top: 0 !important; }
+.md-body > *:last-child { margin-bottom: 0 !important; }
+
+.md-body p {
+  margin: 0.55em 0;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.md-body h1, .md-body h2, .md-body h3, .md-body h4 {
+  font-weight: 700;
+  line-height: 1.3;
+  margin: 1.3em 0 0.5em;
+  color: #fff;
+}
+.md-body h1 { font-size: 1.5rem; letter-spacing: -0.01em; }
+.md-body h2 {
+  font-size: 1.2rem;
+  padding-bottom: 0.3em;
+  border-bottom: 1px solid #2a2a2f;
+}
+.md-body h3 { font-size: 1.05rem; color: #ddd6fe; }
+.md-body h4 { font-size: 0.95rem; color: #c4b5fd; }
+
+.md-body strong { color: #fff; font-weight: 700; }
+.md-body em { color: #e9d5ff; font-style: italic; }
+
+.md-body a {
+  color: #a78bfa;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  text-decoration-color: rgba(167, 139, 250, 0.45);
+  transition: color 0.15s, text-decoration-color 0.15s;
+}
+.md-body a:hover { color: #c4b5fd; text-decoration-color: #c4b5fd; }
+
+.md-body ul, .md-body ol {
+  margin: 0.55em 0;
+  padding-left: 1.5em;
+}
+.md-body ul { list-style: disc; }
+.md-body ol { list-style: decimal; }
+.md-body li { margin: 0.25em 0; }
+.md-body li > p { margin: 0.2em 0; }
+.md-body li::marker { color: #8b5cf6; }
+.md-body ul ul, .md-body ol ol, .md-body ul ol, .md-body ol ul { margin: 0.2em 0; }
+
+.md-body input[type="checkbox"] {
+  margin-right: 0.5em;
+  accent-color: #8b5cf6;
+  transform: translateY(1px);
+}
+
+.md-body code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, "Courier New", monospace;
+  font-size: 0.86em;
+  background: #262630;
+  color: #f3d5ff;
+  padding: 0.1em 0.4em;
+  border-radius: 4px;
+  border: 1px solid #34343f;
+}
+
+.md-body pre {
+  background: #0f0f14;
+  border: 1px solid #2a2a33;
+  border-radius: 8px;
+  padding: 0.9em 1.1em;
+  margin: 0.8em 0;
+  overflow-x: auto;
+  font-size: 0.82rem;
+  line-height: 1.6;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.02);
+}
+.md-body pre code {
+  background: transparent;
+  color: #e5e7eb;
+  padding: 0;
+  border-radius: 0;
+  border: none;
+  font-size: inherit;
+}
+
+.md-body blockquote {
+  border-left: 3px solid #8b5cf6;
+  padding: 0.3em 1em;
+  color: #c4b5fd;
+  margin: 0.8em 0;
+  background: rgba(139, 92, 246, 0.06);
+  border-radius: 0 6px 6px 0;
+}
+.md-body blockquote p { margin: 0.3em 0; }
+
+.md-body hr {
+  border: 0;
+  border-top: 1px solid #2a2a2f;
+  margin: 1.4em 0;
+}
+
+.md-body table {
+  border-collapse: collapse;
+  margin: 0.85em 0;
+  font-size: 0.88em;
+  width: 100%;
+  border-radius: 6px;
+  overflow: hidden;
+}
+.md-body th, .md-body td {
+  border: 1px solid #2a2a2f;
+  padding: 0.5em 0.85em;
+  text-align: left;
+}
+.md-body th {
+  background: #1e1e26;
+  font-weight: 600;
+  color: #ddd6fe;
+  font-size: 0.82em;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+.md-body tr:nth-child(even) td { background: rgba(255, 255, 255, 0.015); }
+.md-body tbody tr:hover td { background: rgba(139, 92, 246, 0.04); }

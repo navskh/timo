@@ -1,0 +1,62 @@
+{
+  "name": "timo",
+  "version": "0.1.0",
+  "description": "TIMO (im.v2) — Think · Idea-Manager · Operation. Local-first AI pair-programmer that spawns your claude/gemini/codex CLI and organizes tasks as you chat. Successor to idea-manager.",
+  "keywords": [
+    "timo",
+    "im",
+    "idea-manager",
+    "ai",
+    "agent",
+    "autonomous",
+    "claude",
+    "claude-code",
+    "gemini",
+    "codex",
+    "local-first",
+    "sqlite",
+    "executor",
+    "task-runner",
+    "developer-tools",
+    "productivity"
+  ],
+  "author": "navskh",
+  "license": "MIT",
+  "bin": {
+    "timo": "./bin/timo.js"
+  },
+  "files": [
+    "README.md",
+    "LICENSE",
+    "bin/",
+    ".next/standalone/",
+    "next.config.mjs",
+    "package.json"
+  ],
+  "scripts": {
+    "dev": "next dev -p 3789",
+    "build": "next build --webpack && node ./scripts/post-build.js",
+    "start": "node bin/timo.js start",
+    "lint": "eslint",
+    "prepublishOnly": "npm run build"
+  },
+  "dependencies": {
+    "nanoid": "^5.1.6",
+    "next": "16.1.6",
+    "react": "19.2.3",
+    "react-dom": "19.2.3",
+    "react-markdown": "^10.1.0",
+    "remark-gfm": "^4.0.1",
+    "sql.js": "^1.14.1"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4",
+    "@types/node": "^20",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "eslint": "^9",
+    "eslint-config-next": "16.1.6",
+    "tailwindcss": "^4",
+    "typescript": "^5"
+  }
+}
