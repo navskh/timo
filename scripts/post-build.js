@@ -42,8 +42,19 @@ for (const rel of WANTED) {
   copyFile(path.join(sqlJsSrc, rel), path.join(sqlJsDst, rel));
 }
 
-// 4. Remove files Next traced but we don't need at runtime (trim publish size).
-const PRUNE = ['node_modules/typescript', 'node_modules/@types'];
+// 4. Prune things Next traced that TIMO never uses at runtime.
+//    - typescript/@types: build-time only
+//    - @img, sharp: server-side image optimization (unused)
+//    - caniuse-lite, baseline-browser-mapping: build-time browser compat data
+const PRUNE = [
+  'node_modules/typescript',
+  'node_modules/@types',
+  'node_modules/@img',
+  'node_modules/sharp',
+  'node_modules/caniuse-lite',
+  'node_modules/baseline-browser-mapping',
+  'node_modules/detect-libc',
+];
 for (const rel of PRUNE) {
   const abs = path.join(STANDALONE, rel);
   if (fs.existsSync(abs)) fs.rmSync(abs, { recursive: true, force: true });
