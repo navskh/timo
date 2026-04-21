@@ -11,7 +11,7 @@
 ## 설치
 
 ```bash
-npm install -g timo
+npm install -g @navskh/timo
 timo start
 ```
 
