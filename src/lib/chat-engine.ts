@@ -9,7 +9,8 @@ import {
 } from './db/queries/chat';
 import { syncTodos } from './todo-sync';
 import { extractSkillFromMessage, listSkills, type ISkill } from './skills';
-import type { IChatMessage, ChatBlock, IChatSession, ITask, AgentType } from '@/types';
+import { markRunning, markIdle } from './chat-state';
+import type { IChatMessage, ChatBlock, IChatSession, ITask, AgentType, IAttachment } from '@/types';
 
 export type ChatEvent =
   | { type: 'user-message-saved'; message: IChatMessage }
@@ -34,6 +35,7 @@ function buildPrompt(
   availableSkills: ISkill[],
   activeSkill: ISkill | null,
   newUserText: string,
+  attachments: IAttachment[],
 ): string {
   const parts: string[] = [];
   parts.push(`You are TIMO, an AI that pairs with the user on a running project called "${projectName}".`);
@@ -87,6 +89,17 @@ function buildPrompt(
     }
   }
   parts.push(`\n# Current user message\n${newUserText}`);
+
+  if (attachments.length > 0) {
+    parts.push('\n# Attached images');
+    parts.push(
+      '사용자가 아래 이미지를 첨부했습니다. **Read 툴로 각 파일을 읽어서** 내용을 분석하고 요청에 반영하세요:',
+    );
+    for (const a of attachments) {
+      parts.push(`- ${a.path}  (${a.name}, ${a.mime}, ${Math.round(a.size / 1024)}KB)`);
+    }
+  }
+
   return parts.join('\n');
 }
 
@@ -98,18 +111,33 @@ export async function runChatTurn(
   sessionId: string,
   userText: string,
   sink: ChatSink,
+  attachments: IAttachment[] = [],
 ): Promise<void> {
   const session = getSession(sessionId);
   if (!session) throw new Error(`Session not found: ${sessionId}`);
   const project = getProject(session.project_id);
   if (!project) throw new Error(`Project not found: ${session.project_id}`);
 
+  markRunning({
+    session_id: sessionId,
+    project_id: session.project_id,
+    title: session.title,
+  });
+
+  // Build user message blocks: text first, then image thumbnails.
+  const userBlocks: ChatBlock[] = [];
+  if (userText.trim()) userBlocks.push({ kind: 'text', content: userText });
+  for (const a of attachments) {
+    userBlocks.push({ kind: 'image', url: a.url, name: a.name, path: a.path });
+  }
+  if (userBlocks.length === 0) userBlocks.push({ kind: 'text', content: '' });
+
   // Persist user message first so it appears immediately in history.
   const userMsg = addMessage({
     session_id: sessionId,
     role: 'user',
     content: userText,
-    blocks: [{ kind: 'text', content: userText }],
+    blocks: userBlocks,
   });
   sink({ type: 'user-message-saved', message: userMsg });
 
@@ -140,6 +168,7 @@ export async function runChatTurn(
     skills,
     activeSkill,
     userBody || userText,
+    attachments,
   );
 
   // Skill can override the agent (e.g., a review skill pinned to claude).
@@ -180,6 +209,7 @@ export async function runChatTurn(
       },
       {
         cwd: project.project_path ?? undefined,
+        model: session.model ?? undefined,
       },
     );
 
@@ -203,6 +233,7 @@ export async function runChatTurn(
     sink({ type: 'error', message });
     sink({ type: 'assistant-message-saved', message: assistantMsg });
   } finally {
+    markIdle(sessionId);
     sink({ type: 'done' });
   }
 }

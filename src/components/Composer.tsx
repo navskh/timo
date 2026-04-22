@@ -1,6 +1,8 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import type { IAttachment } from '@/types';
+import { toast } from './ui/dialogs';
 
 interface ISkillSummary {
   name: string;
@@ -10,23 +12,30 @@ interface ISkillSummary {
 
 interface Props {
   running: boolean;
-  onSend: (text: string) => void;
+  onSend: (text: string, attachments: IAttachment[]) => void;
+}
+
+interface PendingAttachment extends IAttachment {
+  /** Key while uploading; replaced with server response once done. */
+  uploadingKey?: string;
 }
 
 export function Composer({ running, onSend }: Props) {
   const [value, setValue] = useState('');
   const [skills, setSkills] = useState<ISkillSummary[]>([]);
   const [menu, setMenu] = useState<{ filter: string; index: number } | null>(null);
+  const [attachments, setAttachments] = useState<PendingAttachment[]>([]);
+  const [uploading, setUploading] = useState(0);
+  const [dragOver, setDragOver] = useState(false);
   const taRef = useRef<HTMLTextAreaElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Fetch skills once on mount (cached in this session).
   useEffect(() => {
     fetch('/api/skills')
       .then((r) => r.json())
       .then((d) => setSkills(d.skills ?? []));
   }, []);
 
-  // Listen for sidebar clicks that want to inject a skill trigger.
   useEffect(() => {
     const onInsert = (e: Event) => {
       const detail = (e as CustomEvent<{ trigger: string }>).detail;
@@ -41,13 +50,11 @@ export function Composer({ running, onSend }: Props) {
     return () => window.removeEventListener('timo:insert-skill', onInsert);
   }, []);
 
-  // Recompute slash menu on value change.
   useEffect(() => {
     const ta = taRef.current;
     if (!ta) { setMenu(null); return; }
     const cursor = ta.selectionStart ?? value.length;
     const upto = value.slice(0, cursor);
-    // Open menu only if "/" is at the very start OR after a newline, and cursor is still on that slash token
     const match = upto.match(/(?:^|\n)(\/[a-zA-Z0-9-]*)$/);
     if (!match) { setMenu(null); return; }
     const filter = match[1].slice(1).toLowerCase();
@@ -78,6 +85,82 @@ export function Composer({ running, onSend }: Props) {
     }, 0);
   }
 
+  async function uploadFiles(files: File[]) {
+    const images = files.filter((f) => f.type.startsWith('image/'));
+    if (images.length === 0 && files.length > 0) {
+      toast.error('이미지 파일만 지원합니다.');
+      return;
+    }
+    for (const f of images) {
+      setUploading((n) => n + 1);
+      try {
+        const form = new FormData();
+        form.append('file', f);
+        const res = await fetch('/api/uploads', { method: 'POST', body: form });
+        const data = await res.json();
+        if (!res.ok) {
+          toast.error(data.error ?? '업로드 실패');
+          continue;
+        }
+        setAttachments((prev) => [
+          ...prev,
+          {
+            path: data.path,
+            url: data.url,
+            name: data.name,
+            size: data.size,
+            mime: data.mime,
+          },
+        ]);
+      } catch (err) {
+        toast.error(err instanceof Error ? err.message : '업로드 실패');
+      } finally {
+        setUploading((n) => n - 1);
+      }
+    }
+  }
+
+  function removeAttachment(i: number) {
+    setAttachments((prev) => prev.filter((_, idx) => idx !== i));
+  }
+
+  function handlePaste(e: React.ClipboardEvent<HTMLTextAreaElement>) {
+    const files = [...e.clipboardData.items]
+      .map((item) => (item.kind === 'file' ? item.getAsFile() : null))
+      .filter((f): f is File => !!f);
+    if (files.length > 0) {
+      e.preventDefault();
+      uploadFiles(files);
+    }
+  }
+
+  function handleDrop(e: React.DragEvent<HTMLDivElement>) {
+    e.preventDefault();
+    setDragOver(false);
+    const files = [...e.dataTransfer.files];
+    if (files.length > 0) uploadFiles(files);
+  }
+
+  function handleDragOver(e: React.DragEvent<HTMLDivElement>) {
+    if (e.dataTransfer.types.includes('Files')) {
+      e.preventDefault();
+      setDragOver(true);
+    }
+  }
+
+  function handleDragLeave(e: React.DragEvent<HTMLDivElement>) {
+    if (e.currentTarget.contains(e.relatedTarget as Node)) return;
+    setDragOver(false);
+  }
+
+  function submit() {
+    if (running || uploading > 0) return;
+    if (!value.trim() && attachments.length === 0) return;
+    onSend(value, attachments);
+    setValue('');
+    setAttachments([]);
+  }
+
   function handleKey(e: React.KeyboardEvent<HTMLTextAreaElement>) {
     if (menu && matches.length > 0) {
       if (e.key === 'ArrowDown') {
@@ -104,15 +187,19 @@ export function Composer({ running, onSend }: Props) {
 
     if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
       e.preventDefault();
-      if (value.trim() && !running) {
-        onSend(value);
-        setValue('');
-      }
+      submit();
     }
   }
 
+  const canSend = !running && uploading === 0 && (value.trim() || attachments.length > 0);
+
   return (
-    <div className="relative">
+    <div
+      className="relative"
+      onDragOver={handleDragOver}
+      onDragLeave={handleDragLeave}
+      onDrop={handleDrop}
+    >
       {menu && matches.length > 0 && (
         <div className="absolute bottom-full left-0 right-0 mb-2 bg-[var(--surface-2)] border border-[var(--border)] rounded-lg shadow-2xl overflow-hidden">
           <div className="px-3 py-1.5 text-[10px] text-[var(--fg-dim)] uppercase tracking-wider border-b border-[var(--border)]">
@@ -141,29 +228,85 @@ export function Composer({ running, onSend }: Props) {
         </div>
       )}
 
+      {/* Attachment thumbnails */}
+      {(attachments.length > 0 || uploading > 0) && (
+        <div className="flex flex-wrap gap-2 mb-2">
+          {attachments.map((a, i) => (
+            <div
+              key={a.path}
+              className="relative group border border-[var(--border)] rounded-md overflow-hidden bg-[var(--surface-2)]"
+            >
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={a.url}
+                alt={a.name}
+                className="w-16 h-16 object-cover"
+              />
+              <button
+                type="button"
+                onClick={() => removeAttachment(i)}
+                className="absolute top-0.5 right-0.5 w-5 h-5 rounded-full bg-black/70 text-white text-xs leading-none opacity-0 group-hover:opacity-100 transition hover:bg-red-600"
+                title="제거"
+              >
+                ×
+              </button>
+            </div>
+          ))}
+          {uploading > 0 && (
+            <div className="w-16 h-16 border border-[var(--border)] rounded-md flex items-center justify-center text-xs text-[var(--fg-dim)] animate-pulse bg-[var(--surface-2)]">
+              업로드…
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Drag overlay */}
+      {dragOver && (
+        <div className="absolute inset-0 z-10 border-2 border-dashed border-violet-400 rounded-lg bg-violet-950/40 flex items-center justify-center pointer-events-none text-sm text-violet-200">
+          🖼 이미지 드롭해서 첨부
+        </div>
+      )}
+
       <div className="flex gap-2 items-end">
+        <button
+          type="button"
+          onClick={() => fileInputRef.current?.click()}
+          disabled={running}
+          className="h-[60px] w-[44px] flex items-center justify-center rounded-lg border border-[var(--border)] bg-[var(--surface-2)] hover:border-violet-500/50 hover:bg-[var(--surface-3)] disabled:opacity-40 transition text-lg"
+          title="이미지 첨부 (드래그·Ctrl+V도 가능)"
+        >
+          📎
+        </button>
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/*"
+          multiple
+          onChange={(e) => {
+            const files = e.target.files ? [...e.target.files] : [];
+            if (files.length > 0) uploadFiles(files);
+            e.target.value = '';
+          }}
+          className="hidden"
+        />
         <textarea
           ref={taRef}
           value={value}
           onChange={(e) => setValue(e.target.value)}
           onKeyDown={handleKey}
-          placeholder={running ? 'TIMO가 작업 중…' : '무엇을 부탁할까요?  (Enter 전송 · Shift+Enter 줄바꿈 · / 스킬)'}
+          onPaste={handlePaste}
+          placeholder={running ? 'TIMO가 작업 중…' : '무엇을 부탁할까요?  (Enter 전송 · Shift+Enter 줄바꿈 · / 스킬 · 이미지 드래그/붙여넣기)'}
           disabled={running}
           rows={2}
-          className="flex-1 bg-[var(--surface-2)] border border-[var(--border)] focus:border-violet-500 rounded-lg px-3.5 py-2.5 text-sm resize-none outline-none disabled:opacity-50 transition-colors mono-ascii-fallback"
+          className="flex-1 bg-[var(--surface-2)] border border-[var(--border)] focus:border-violet-500 rounded-lg px-3.5 py-2.5 text-sm resize-none outline-none disabled:opacity-50 transition-colors"
           style={{ fontFamily: 'inherit' }}
         />
         <button
-          onClick={() => {
-            if (value.trim() && !running) {
-              onSend(value);
-              setValue('');
-            }
-          }}
-          disabled={running || !value.trim()}
+          onClick={submit}
+          disabled={!canSend}
           className="h-[60px] px-5 bg-violet-600 hover:bg-violet-500 disabled:opacity-40 disabled:cursor-not-allowed rounded-lg text-sm font-medium transition shrink-0"
         >
-          {running ? '…' : '전송'}
+          {running ? '…' : uploading > 0 ? '업로드' : '전송'}
         </button>
       </div>
     </div>

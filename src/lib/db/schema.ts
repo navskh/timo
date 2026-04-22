@@ -53,6 +53,7 @@ export function initSchema(db: any): void {
       id TEXT PRIMARY KEY,
       project_id TEXT NOT NULL,
       title TEXT NOT NULL DEFAULT '새 대화',
+      model TEXT,
       created_at TEXT NOT NULL DEFAULT (datetime('now')),
       updated_at TEXT NOT NULL DEFAULT (datetime('now')),
       FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE
@@ -74,4 +75,10 @@ export function initSchema(db: any): void {
     CREATE INDEX IF NOT EXISTS idx_sessions_project ON chat_sessions(project_id, updated_at DESC);
     CREATE INDEX IF NOT EXISTS idx_messages_session ON chat_messages(session_id, created_at);
   `);
+
+  // Backfill migrations for existing DBs
+  const sessionCols = db.prepare("PRAGMA table_info(chat_sessions)").all() as { name: string }[];
+  if (!sessionCols.some((c) => c.name === 'model')) {
+    db.exec("ALTER TABLE chat_sessions ADD COLUMN model TEXT");
+  }
 }

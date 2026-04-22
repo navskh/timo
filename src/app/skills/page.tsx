@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import type { AgentType } from '@/types';
+import { confirm, toast } from '@/components/ui/dialogs';
 
 interface ISkill {
   name: string;
@@ -76,7 +77,7 @@ export default function SkillsPage() {
     const data = await res.json();
     setSaving(false);
     if (!res.ok) {
-      alert(data.error ?? 'failed');
+      toast.error(data.error ?? '저장 실패');
       return;
     }
     await load();
@@ -84,12 +85,20 @@ export default function SkillsPage() {
     setCreating(false);
     setSelectedName(data.skill.name);
     setDirty(false);
+    toast.success(`"/${data.skill.name}" 저장됨`);
   }
 
   async function remove() {
     if (!selectedName) return;
-    if (!confirm(`스킬 "${selectedName}" 삭제할까요?`)) return;
+    const ok = await confirm({
+      title: '스킬 삭제',
+      message: `"/${selectedName}" 스킬을 삭제할까요?\n~/.timo/skills/${selectedName}.md 파일이 제거됩니다.`,
+      confirmText: '삭제',
+      danger: true,
+    });
+    if (!ok) return;
     await fetch(`/api/skills/${selectedName}`, { method: 'DELETE' });
+    toast.success('스킬 삭제됨');
     await load();
     window.dispatchEvent(new Event('timo:refresh-skills'));
     setSelectedName(null);
@@ -129,8 +138,16 @@ export default function SkillsPage() {
             return (
               <li key={s.name}>
                 <button
-                  onClick={() => {
-                    if (dirty && !confirm('변경사항이 저장되지 않았어요. 이동할까요?')) return;
+                  onClick={async () => {
+                    if (dirty) {
+                      const ok = await confirm({
+                        title: '저장되지 않은 변경사항',
+                        message: '현재 편집 중인 내용이 있어요. 이동하면 변경사항이 사라집니다.',
+                        confirmText: '이동',
+                        danger: true,
+                      });
+                      if (!ok) return;
+                    }
                     setCreating(false);
                     setSelectedName(s.name);
                     setDirty(false);

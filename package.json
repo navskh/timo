@@ -1,6 +1,6 @@
 {
   "name": "@navskh/timo",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "TIMO (im.v2) — Think · Idea-Manager · Operation. Local-first AI pair-programmer that spawns your claude/gemini/codex CLI and organizes tasks as you chat. Successor to idea-manager.",
   "homepage": "https://github.com/navskh/timo#readme",
   "repository": {
@@ -49,6 +49,7 @@
     "prepublishOnly": "npm run build"
   },
   "dependencies": {
+    "chrome-cookies-secure": "^3.0.2",
     "nanoid": "^5.1.6",
     "next": "16.1.6",
     "react": "19.2.3",

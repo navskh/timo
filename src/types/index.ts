@@ -51,6 +51,8 @@ export interface IChatSession {
   id: string;
   project_id: string;
   title: string;
+  /** Model override for this session. null → project default (opus for claude). */
+  model: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -65,8 +67,19 @@ export interface IChatMessage {
   created_at: string;
 }
 
+export interface IAttachment {
+  /** Absolute fs path (given to the CLI for Read). */
+  path: string;
+  /** Browser-accessible URL under /api/uploads/... */
+  url: string;
+  name: string;
+  size: number;
+  mime: string;
+}
+
 export type ChatBlock =
   | { kind: 'text'; content: string }
+  | { kind: 'image'; url: string; name?: string; path?: string }
   | { kind: 'tool_use'; id?: string; name: string; input: unknown }
   | { kind: 'tool_result'; toolUseId?: string; content: string; isError?: boolean }
   | { kind: 'system'; content: string }

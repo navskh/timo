@@ -23,3 +23,12 @@ export function getSkillsDir(): string {
   }
   return SKILLS_DIR;
 }
+
+const UPLOADS_DIR = path.join(os.homedir(), '.timo', 'uploads');
+
+export function getUploadsDir(): string {
+  if (!fs.existsSync(UPLOADS_DIR)) {
+    fs.mkdirSync(UPLOADS_DIR, { recursive: true });
+  }
+  return UPLOADS_DIR;
+}

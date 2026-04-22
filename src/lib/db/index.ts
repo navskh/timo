@@ -119,8 +119,16 @@ class DatabaseWrapper {
   }
 }
 
-let wrapper: DatabaseWrapper | null = null;
-let initPromise: Promise<DatabaseWrapper> | null = null;
+// Stash on globalThis so Next's HMR (which re-imports this module) doesn't
+// spawn multiple DB wrappers — that caused writes routed to different
+// in-memory copies, so DELETEs appeared no-op and disk state fluttered.
+interface TimoGlobal {
+  __timoDbWrapper?: DatabaseWrapper | null;
+  __timoDbInitPromise?: Promise<DatabaseWrapper> | null;
+}
+const timoGlobal = globalThis as TimoGlobal;
+let wrapper: DatabaseWrapper | null = timoGlobal.__timoDbWrapper ?? null;
+let initPromise: Promise<DatabaseWrapper> | null = timoGlobal.__timoDbInitPromise ?? null;
 
 function findSqlJsDistDir(): string {
   // Walk up from process.cwd() looking for node_modules/sql.js/dist/sql-wasm.wasm.
@@ -160,6 +168,7 @@ async function initAsync(): Promise<DatabaseWrapper> {
 
   wrapper = new DatabaseWrapper(db, dbPath);
   initSchema(wrapper as unknown as Parameters<typeof initSchema>[0]);
+  timoGlobal.__timoDbWrapper = wrapper;
 
   process.on('exit', () => wrapper?.close());
 
@@ -170,6 +179,7 @@ export async function ensureDb(): Promise<DatabaseWrapper> {
   if (wrapper) return wrapper;
   if (!initPromise) {
     initPromise = initAsync();
+    timoGlobal.__timoDbInitPromise = initPromise;
   }
   return initPromise;
 }

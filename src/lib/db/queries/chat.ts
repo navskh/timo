@@ -36,6 +36,12 @@ export function renameSession(id: string, title: string): void {
     .run(title, id);
 }
 
+export function setSessionModel(id: string, model: string | null): void {
+  getDb()
+    .prepare(`UPDATE chat_sessions SET model = ?, updated_at = datetime('now') WHERE id = ?`)
+    .run(model, id);
+}
+
 export function deleteSession(id: string): void {
   getDb().prepare('DELETE FROM chat_sessions WHERE id = ?').run(id);
 }

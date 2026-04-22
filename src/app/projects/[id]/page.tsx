@@ -2,11 +2,12 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState, use } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
-import type { IProject, ITask, IChatSession, IChatMessage, ChatBlock } from '@/types';
+import type { IProject, ITask, IChatSession, IChatMessage, ChatBlock, IAttachment } from '@/types';
 import { ChatMessage } from '@/components/ChatMessage';
 import { TaskSidebar } from '@/components/TaskSidebar';
 import { DirectoryPicker } from '@/components/DirectoryPicker';
 import { Composer } from '@/components/Composer';
+import { confirm, toast } from '@/components/ui/dialogs';
 import { useSSEStream } from '@/lib/use-sse-stream';
 
 export default function ProjectChatPage({ params }: { params: Promise<{ id: string }> }) {
@@ -22,6 +23,7 @@ export default function ProjectChatPage({ params }: { params: Promise<{ id: stri
   const [tasks, setTasks] = useState<ITask[]>([]);
   const [streamingBlocks, setStreamingBlocks] = useState<ChatBlock[] | null>(null);
   const [pickingPath, setPickingPath] = useState(false);
+  const [externalRunning, setExternalRunning] = useState(false);
 
   const { events, running, start } = useSSEStream();
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -74,16 +76,52 @@ export default function ProjectChatPage({ params }: { params: Promise<{ id: stri
     }
   }, [queryStringSession, currentSessionId]);
 
-  // Load messages when current session changes + reflect it in the URL so the
-  // sidebar can highlight the active session.
+  // Load messages when current session changes.
   useEffect(() => {
     if (!currentSessionId) return;
     loadMessages(currentSessionId);
     setStreamingBlocks(null);
-    if (queryStringSession !== currentSessionId) {
-      router.replace(`/projects/${id}?s=${currentSessionId}`, { scroll: false });
-    }
-  }, [currentSessionId, loadMessages, queryStringSession, id, router]);
+  }, [currentSessionId, loadMessages]);
+
+  // Poll whether THIS session is still producing a turn on the server (e.g.,
+  // user navigated away mid-stream and came back). Also listen for completion.
+  useEffect(() => {
+    if (!currentSessionId) { setExternalRunning(false); return; }
+    let stopped = false;
+    const poll = async () => {
+      try {
+        const r = await fetch('/api/sessions/status').then((r) => r.json());
+        if (stopped) return;
+        const ids: string[] = (r.running ?? []).map((x: { session_id: string }) => x.session_id);
+        setExternalRunning(ids.includes(currentSessionId));
+      } catch { /* ignore */ }
+    };
+    poll();
+    const id = setInterval(poll, 2000);
+
+    const onFinished = (e: Event) => {
+      const detail = (e as CustomEvent<{ session_id: string }>).detail;
+      if (detail?.session_id === currentSessionId) {
+        setExternalRunning(false);
+        loadMessages(currentSessionId);
+      }
+    };
+    window.addEventListener('timo:session-finished', onFinished);
+
+    return () => {
+      stopped = true;
+      clearInterval(id);
+      window.removeEventListener('timo:session-finished', onFinished);
+    };
+  }, [currentSessionId, loadMessages]);
+
+  // Reflect current session in URL (state → URL). Intentionally does NOT depend on
+  // queryStringSession — otherwise URL-driven state changes would trigger a URL
+  // replace that fights the other effect and creates a ping-pong loop.
+  useEffect(() => {
+    if (!currentSessionId) return;
+    router.replace(`/projects/${id}?s=${currentSessionId}`, { scroll: false });
+  }, [currentSessionId, id, router]);
 
   // Process SSE events
   useEffect(() => {
@@ -129,12 +167,13 @@ export default function ProjectChatPage({ params }: { params: Promise<{ id: stri
     [sessions, currentSessionId],
   );
 
-  async function send(text: string) {
-    if (!currentSessionId || !text.trim() || running) return;
+  async function send(text: string, attachments: IAttachment[] = []) {
+    if (!currentSessionId || running) return;
+    if (!text.trim() && attachments.length === 0) return;
     await start(`/api/sessions/${currentSessionId}/send`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ text }),
+      body: JSON.stringify({ text, attachments }),
     });
   }
 
@@ -161,6 +200,18 @@ export default function ProjectChatPage({ params }: { params: Promise<{ id: stri
     loadTasks();
   }
 
+  async function reorderPending(orderedPendingIds: string[]) {
+    // Full ordering: pending (new order) → others in current order
+    const others = tasks.filter((t) => t.status !== 'pending').map((t) => t.id);
+    const fullOrder = [...orderedPendingIds, ...others];
+    await fetch(`/api/projects/${id}/tasks/reorder`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ orderedIds: fullOrder }),
+    });
+    loadTasks();
+  }
+
   async function savePath(value: string | null) {
     await fetch(`/api/projects/${id}`, {
       method: 'PATCH',
@@ -171,10 +222,30 @@ export default function ProjectChatPage({ params }: { params: Promise<{ id: stri
     loadProject();
   }
 
+  async function setSessionModel(model: string | null) {
+    if (!currentSessionId) return;
+    const r = await fetch(`/api/sessions/${currentSessionId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ model }),
+    });
+    const data = await r.json();
+    if (data?.session) {
+      setSessions((prev) => prev.map((s) => (s.id === data.session.id ? data.session : s)));
+    }
+  }
+
   async function deleteCurrentSession() {
     if (!currentSessionId) return;
-    if (!confirm(`"${currentSession?.title ?? ''}" 대화를 삭제할까요?`)) return;
+    const ok = await confirm({
+      title: '대화 삭제',
+      message: `"${currentSession?.title ?? ''}" 대화를 삭제할까요?\n메시지 전체가 함께 지워집니다.`,
+      confirmText: '삭제',
+      danger: true,
+    });
+    if (!ok) return;
     await fetch(`/api/sessions/${currentSessionId}`, { method: 'DELETE' });
+    toast.success('대화 삭제됨');
     const remaining = await loadSessions();
     window.dispatchEvent(new Event('timo:refresh-sidebar'));
     if (remaining.length > 0) {
@@ -216,6 +287,19 @@ export default function ProjectChatPage({ params }: { params: Promise<{ id: stri
             <span className="px-2 py-0.5 rounded text-[10px] font-medium mono bg-[var(--surface-3)] text-[var(--fg-muted)] uppercase">
               {project.agent_type}
             </span>
+            {project.agent_type === 'claude' && currentSession && (
+              <select
+                value={currentSession.model ?? ''}
+                onChange={(e) => setSessionModel(e.target.value || null)}
+                className="text-[11px] mono px-2 py-1 rounded-md border border-[var(--border)] bg-[var(--surface-2)] hover:border-violet-500/50 text-gray-200 outline-none cursor-pointer"
+                title="이 대화에서 사용할 모델"
+              >
+                <option value="">기본 (opus)</option>
+                <option value="opus">Opus — 최고 성능</option>
+                <option value="sonnet">Sonnet — 균형, 별도 쿼터</option>
+                <option value="haiku">Haiku — 빠름/가벼움</option>
+              </select>
+            )}
             <button
               onClick={() => setPickingPath(true)}
               className={`flex items-center gap-1 text-[11px] mono px-2 py-1 rounded-md border transition max-w-[320px] ${
@@ -281,12 +365,28 @@ export default function ProjectChatPage({ params }: { params: Promise<{ id: stri
             return <ChatMessage key={m.id} role={m.role} blocks={blocks} />;
           })}
           {streamingBlocks && <ChatMessage role="assistant" blocks={streamingBlocks} streaming />}
+          {!streamingBlocks && externalRunning && (
+            <div className="flex gap-3 px-2 items-center text-[var(--fg-muted)]">
+              <div className="w-7 h-7 rounded-lg bg-violet-600 flex items-center justify-center shrink-0">
+                <span className="text-white text-[11px] font-bold">T</span>
+              </div>
+              <div className="flex items-center gap-1.5 text-sm">
+                <span className="text-violet-300 font-medium">TIMO</span>
+                <span className="text-[var(--fg-dim)]">응답 중</span>
+                <span className="flex gap-0.5 ml-1">
+                  <span className="w-1.5 h-1.5 rounded-full bg-violet-400 animate-bounce" style={{ animationDelay: '0ms' }} />
+                  <span className="w-1.5 h-1.5 rounded-full bg-violet-400 animate-bounce" style={{ animationDelay: '120ms' }} />
+                  <span className="w-1.5 h-1.5 rounded-full bg-violet-400 animate-bounce" style={{ animationDelay: '240ms' }} />
+                </span>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Composer */}
         <div className="border-t border-[var(--border)] bg-[var(--surface-1)] px-4 py-3">
           <div className="max-w-4xl mx-auto">
-            <Composer running={running} onSend={send} />
+            <Composer running={running || externalRunning} onSend={send} />
           </div>
         </div>
       </section>
@@ -297,6 +397,7 @@ export default function ProjectChatPage({ params }: { params: Promise<{ id: stri
           onDelete={deleteTask}
           onAdd={addTask}
           onToggleStatus={toggleTaskStatus}
+          onReorderPending={reorderPending}
         />
       </div>
 

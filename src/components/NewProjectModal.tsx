@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import type { AgentType } from '@/types';
+import { DirectoryPicker } from './DirectoryPicker';
 
 interface Props {
   onClose: () => void;
@@ -16,6 +17,7 @@ export function NewProjectModal({ onClose, onCreated }: Props) {
     agent_type: 'claude' as AgentType,
   });
   const [busy, setBusy] = useState(false);
+  const [pickingPath, setPickingPath] = useState(false);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -71,12 +73,22 @@ export function NewProjectModal({ onClose, onCreated }: Props) {
             />
           </Field>
           <Field label="작업 디렉토리 (선택)">
-            <input
-              value={form.project_path}
-              onChange={(e) => setForm({ ...form, project_path: e.target.value })}
-              placeholder="/Users/you/projects/foo — 나중에도 변경 가능"
-              className="input mono"
-            />
+            <div className="flex gap-2">
+              <input
+                value={form.project_path}
+                onChange={(e) => setForm({ ...form, project_path: e.target.value })}
+                placeholder="/Users/you/projects/foo — 나중에도 변경 가능"
+                className="input mono"
+              />
+              <button
+                type="button"
+                onClick={() => setPickingPath(true)}
+                className="shrink-0 px-3 py-2 text-sm rounded-md border border-[var(--border)] hover:bg-[var(--surface-3)] hover:border-violet-500/50 transition flex items-center gap-1"
+                title="폴더 브라우저로 선택"
+              >
+                📁 찾기
+              </button>
+            </div>
           </Field>
           <Field label="에이전트">
             <select
@@ -107,6 +119,17 @@ export function NewProjectModal({ onClose, onCreated }: Props) {
           </button>
         </div>
       </form>
+      {pickingPath && (
+        <DirectoryPicker
+          initialPath={form.project_path || null}
+          onSelect={(p) => {
+            setForm({ ...form, project_path: p });
+            setPickingPath(false);
+          }}
+          onClose={() => setPickingPath(false)}
+        />
+      )}
+
       <style jsx>{`
         .input {
           width: 100%;

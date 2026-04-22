@@ -12,11 +12,34 @@ interface Props {
 
 export function ChatMessage({ role, blocks, streaming }: Props) {
   if (role === 'user') {
-    const text = blocks.filter((b) => b.kind === 'text').map((b) => (b as { content: string }).content).join('\n');
+    const textParts = blocks.filter((b) => b.kind === 'text').map((b) => (b as { content: string }).content);
+    const imageBlocks = blocks.filter((b): b is Extract<ChatBlock, { kind: 'image' }> => b.kind === 'image');
+    const text = textParts.join('\n');
     return (
       <div className="flex justify-end px-2">
-        <div className="max-w-[78%] bg-violet-600 text-white px-3.5 py-2 rounded-2xl rounded-tr-md text-[14px] leading-relaxed whitespace-pre-wrap shadow-sm">
-          {text}
+        <div className="max-w-[78%] flex flex-col items-end gap-2">
+          {imageBlocks.length > 0 && (
+            <div className="flex flex-wrap gap-2 justify-end">
+              {imageBlocks.map((img, i) => (
+                <a
+                  key={i}
+                  href={img.url}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="block border border-violet-700/50 rounded-lg overflow-hidden hover:border-violet-400 transition"
+                  title={img.name ?? '이미지'}
+                >
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={img.url} alt={img.name ?? ''} className="max-w-[240px] max-h-[200px] object-cover" />
+                </a>
+              ))}
+            </div>
+          )}
+          {text && (
+            <div className="bg-violet-600 text-white px-3.5 py-2 rounded-2xl rounded-tr-md text-[14px] leading-relaxed whitespace-pre-wrap shadow-sm">
+              {text}
+            </div>
+          )}
         </div>
       </div>
     );
@@ -52,6 +75,7 @@ function AssistantAvatar() {
 
 type Cluster =
   | { kind: 'text'; block: Extract<ChatBlock, { kind: 'text' }> }
+  | { kind: 'image'; block: Extract<ChatBlock, { kind: 'image' }> }
   | { kind: 'note'; block: Extract<ChatBlock, { kind: 'system' } | { kind: 'error' }> }
   | { kind: 'tools'; blocks: Array<Extract<ChatBlock, { kind: 'tool_use' } | { kind: 'tool_result' }>> };
 
@@ -64,6 +88,8 @@ function buildClusters(blocks: ChatBlock[]): Cluster[] {
       else out.push({ kind: 'tools', blocks: [b] });
     } else if (b.kind === 'text') {
       out.push({ kind: 'text', block: b });
+    } else if (b.kind === 'image') {
+      out.push({ kind: 'image', block: b });
     } else {
       out.push({ kind: 'note', block: b });
     }
@@ -77,6 +103,23 @@ function ClusterRenderer({ cluster }: { cluster: Cluster }) {
       <div className="md-body text-[15px] text-gray-100 leading-[1.75] max-w-[740px]">
         <ReactMarkdown remarkPlugins={[remarkGfm]}>{cluster.block.content}</ReactMarkdown>
       </div>
+    );
+  }
+  if (cluster.kind === 'image') {
+    return (
+      <a
+        href={cluster.block.url}
+        target="_blank"
+        rel="noreferrer"
+        className="inline-block border border-[var(--border)] rounded-lg overflow-hidden hover:border-violet-500 transition"
+      >
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={cluster.block.url}
+          alt={cluster.block.name ?? ''}
+          className="max-w-[320px] max-h-[240px] object-cover"
+        />
+      </a>
     );
   }
   if (cluster.kind === 'note') {

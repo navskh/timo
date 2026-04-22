@@ -1,10 +1,12 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import type { IProject, IChatSession } from '@/types';
 import { NewProjectModal } from './NewProjectModal';
+import { ClaudeLimitsBar } from './ClaudeLimitsBar';
+import { confirm, toast } from './ui/dialogs';
 
 interface ISkillSummary {
   name: string;
@@ -22,6 +24,8 @@ export function AppSidebar() {
   const [sessionsByProject, setSessionsByProject] = useState<Record<string, IChatSession[]>>({});
   const [showNew, setShowNew] = useState(false);
   const [skills, setSkills] = useState<ISkillSummary[]>([]);
+  const [runningIds, setRunningIds] = useState<Set<string>>(new Set());
+  const prevRunningRef = useRef<Map<string, string>>(new Map());
 
   const activeProjectId = (() => {
     const m = pathname?.match(/^\/projects\/([^/]+)/);
@@ -47,6 +51,38 @@ export function AppSidebar() {
     loadProjects();
     loadSkills();
   }, [loadProjects, loadSkills]);
+
+  // Poll running sessions every 2s. Detect transitions to fire completion toast
+  // and broadcast globally so the chat page can refetch its messages.
+  useEffect(() => {
+    let stopped = false;
+    const poll = async () => {
+      try {
+        const r = await fetch('/api/sessions/status').then((r) => r.json());
+        if (stopped) return;
+        const nextList: Array<{ session_id: string; project_id: string; title: string }> =
+          r.running ?? [];
+        const nextMap = new Map<string, string>();
+        for (const s of nextList) nextMap.set(s.session_id, s.title);
+
+        // Completion detection: was running, now not.
+        const prev = prevRunningRef.current;
+        for (const [sid, title] of prev) {
+          if (!nextMap.has(sid)) {
+            toast.success(`응답 완료: ${title}`);
+            window.dispatchEvent(
+              new CustomEvent('timo:session-finished', { detail: { session_id: sid } }),
+            );
+          }
+        }
+        prevRunningRef.current = nextMap;
+        setRunningIds(new Set(nextMap.keys()));
+      } catch { /* transient error — ignore */ }
+    };
+    poll();
+    const id = setInterval(poll, 2000);
+    return () => { stopped = true; clearInterval(id); };
+  }, []);
 
   // Auto-expand & load sessions for active project
   useEffect(() => {
@@ -88,8 +124,15 @@ export function AppSidebar() {
   }
 
   async function deleteProject(id: string, name: string) {
-    if (!confirm(`프로젝트 "${name}" 삭제할까요? 모든 세션·태스크·실행 이력이 함께 지워져요.`)) return;
+    const ok = await confirm({
+      title: '프로젝트 삭제',
+      message: `"${name}"을(를) 삭제할까요?\n\n모든 세션·태스크·실행 이력이 함께 지워집니다. 되돌릴 수 없어요.`,
+      confirmText: '삭제',
+      danger: true,
+    });
+    if (!ok) return;
     await fetch(`/api/projects/${id}`, { method: 'DELETE' });
+    toast.success(`프로젝트 "${name}" 삭제됨`);
     if (activeProjectId === id) router.push('/');
     loadProjects();
   }
@@ -98,6 +141,23 @@ export function AppSidebar() {
     const r = await fetch(`/api/projects/${projectId}/sessions`, { method: 'POST' }).then((r) => r.json());
     await loadSessions(projectId);
     if (r?.session?.id) router.push(`/projects/${projectId}?s=${r.session.id}`);
+  }
+
+  async function deleteSession(projectId: string, sessionId: string, title: string) {
+    const ok = await confirm({
+      title: '대화 삭제',
+      message: `"${title}" 대화를 삭제할까요?\n메시지 전체가 함께 지워집니다.`,
+      confirmText: '삭제',
+      danger: true,
+    });
+    if (!ok) return;
+    await fetch(`/api/sessions/${sessionId}`, { method: 'DELETE' });
+    toast.success('대화 삭제됨');
+    await loadSessions(projectId);
+    // If we were viewing the deleted session, ensure redirects to a valid one.
+    if (activeProjectId === projectId && activeSessionId === sessionId) {
+      router.push(`/projects/${projectId}`);
+    }
   }
 
   return (
@@ -184,19 +244,41 @@ export function AppSidebar() {
                       )}
                       {sessions.slice(0, 10).map((s) => {
                         const isActiveSession = isActive && activeSessionId === s.id;
+                        const isRunning = runningIds.has(s.id);
                         return (
                           <li key={s.id}>
-                            <Link
-                              href={`/projects/${p.id}?s=${s.id}`}
-                              className={`block pl-3 pr-2 py-1 text-[12px] rounded-r truncate transition relative ${
+                            <div
+                              className={`group/session flex items-center rounded-r transition relative ${
                                 isActiveSession
-                                  ? 'bg-[var(--accent-bg)] text-violet-100 font-medium before:absolute before:left-[-1px] before:top-1 before:bottom-1 before:w-[2px] before:bg-violet-400 before:rounded-full'
-                                  : 'text-gray-400 hover:text-violet-200 hover:bg-[var(--surface-3)]'
+                                  ? 'bg-[var(--accent-bg)] before:absolute before:left-[-1px] before:top-1 before:bottom-1 before:w-[2px] before:bg-violet-400 before:rounded-full'
+                                  : 'hover:bg-[var(--surface-3)]'
                               }`}
-                              title={s.title}
                             >
-                              {s.title}
-                            </Link>
+                              <Link
+                                href={`/projects/${p.id}?s=${s.id}`}
+                                className={`pl-3 pr-1 py-1 text-[12px] flex-1 min-w-0 flex items-center gap-1.5 ${
+                                  isActiveSession
+                                    ? 'text-violet-100 font-medium'
+                                    : 'text-gray-400 group-hover/session:text-violet-200'
+                                }`}
+                                title={isRunning ? `${s.title} — 응답 중` : s.title}
+                              >
+                                {isRunning && (
+                                  <span
+                                    className="shrink-0 w-1.5 h-1.5 rounded-full bg-violet-400 animate-pulse"
+                                    aria-label="응답 중"
+                                  />
+                                )}
+                                <span className="truncate flex-1">{s.title}</span>
+                              </Link>
+                              <button
+                                onClick={() => deleteSession(p.id, s.id, s.title)}
+                                className="shrink-0 opacity-0 group-hover/session:opacity-100 text-[var(--fg-dim)] hover:text-red-400 transition px-1.5 py-1 text-[11px]"
+                                title="대화 삭제"
+                              >
+                                ×
+                              </button>
+                            </div>
                           </li>
                         );
                       })}
@@ -251,6 +333,8 @@ export function AppSidebar() {
             ))}
           </ul>
         </div>
+
+        <ClaudeLimitsBar />
 
         <div className="px-4 py-2 border-t border-[var(--border)] text-[10px] text-[var(--fg-dim)] mono">
           Think · Idea-Manager · Operation
