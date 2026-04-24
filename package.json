@@ -30,23 +30,11 @@
   ],
   "author": "navskh",
   "license": "MIT",
-  "bin": {
-    "timo": "./bin/timo.js"
-  },
-  "files": [
-    "README.md",
-    "LICENSE",
-    "bin/",
-    ".next/standalone/",
-    "next.config.mjs",
-    "package.json"
-  ],
+  "private": true,
   "scripts": {
     "dev": "next dev -p 3789",
     "build": "next build --webpack && node ./scripts/post-build.js",
-    "start": "node bin/timo.js start",
     "lint": "eslint",
-    "prepublishOnly": "npm run build",
     "tauri": "PATH=\"$HOME/.cargo/bin:$PATH\" tauri",
     "tauri:dev": "PATH=\"$HOME/.cargo/bin:$PATH\" tauri dev",
     "tauri:build": "bash scripts/tauri-build.sh"
