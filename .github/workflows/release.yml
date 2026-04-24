@@ -15,11 +15,13 @@ jobs:
       matrix:
         include:
           - platform: macos-latest
-            args: --target aarch64-apple-darwin
+            target: aarch64-apple-darwin
           - platform: macos-latest
-            args: --target x86_64-apple-darwin
+            target: x86_64-apple-darwin
 
     runs-on: ${{ matrix.platform }}
+    env:
+      TAURI_TARGET_TRIPLE: ${{ matrix.target }}
     steps:
       - uses: actions/checkout@v4
 
@@ -55,4 +57,4 @@ jobs:
           releaseDraft: true
           prerelease: false
           includeUpdaterJson: true
-          args: ${{ matrix.args }}
+          args: --target ${{ matrix.target }}

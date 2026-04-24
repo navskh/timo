@@ -32,6 +32,12 @@ console.log('[tauri-prepare] copied .next/standalone → src-tauri/server-resour
 
 // 2. Node sidecar
 function detectTargetTriple() {
+  // Honor explicit override (set by CI per matrix entry — needed for
+  // cross-arch builds where the runner's `rustc` host triple differs
+  // from the requested --target).
+  if (process.env.TAURI_TARGET_TRIPLE) {
+    return process.env.TAURI_TARGET_TRIPLE.trim();
+  }
   const env = {
     ...process.env,
     PATH: `${process.env.HOME}/.cargo/bin:${process.env.PATH || ''}`,
