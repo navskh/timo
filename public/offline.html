@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>TIMO — 오프라인</title>
+<style>
+  :root { color-scheme: dark; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Pretendard", system-ui, sans-serif;
+    background: #0a0a0c;
+    color: #e7e7ea;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+  }
+  .card {
+    max-width: 440px;
+    width: 100%;
+    text-align: center;
+  }
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 10px;
+    border-radius: 999px;
+    background: rgba(139, 92, 246, 0.12);
+    color: #a78bfa;
+    font-size: 12px;
+    font-weight: 500;
+    letter-spacing: 0.02em;
+    margin-bottom: 20px;
+  }
+  .dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: #a78bfa;
+    animation: pulse 1.6s ease-in-out infinite;
+  }
+  @keyframes pulse { 0%,100% { opacity: 0.4; } 50% { opacity: 1; } }
+  h1 {
+    font-size: 22px;
+    font-weight: 600;
+    margin: 0 0 12px;
+    letter-spacing: -0.01em;
+  }
+  p {
+    font-size: 14px;
+    line-height: 1.6;
+    color: #a1a1aa;
+    margin: 0 0 20px;
+  }
+  pre {
+    text-align: left;
+    background: #131316;
+    border: 1px solid #232328;
+    border-radius: 8px;
+    padding: 12px 14px;
+    font-family: "SF Mono", ui-monospace, Menlo, monospace;
+    font-size: 12.5px;
+    color: #d4d4d8;
+    overflow-x: auto;
+    margin: 0 0 20px;
+  }
+  button {
+    appearance: none;
+    border: 0;
+    background: #8b5cf6;
+    color: white;
+    font-size: 13px;
+    font-weight: 500;
+    padding: 9px 18px;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background 0.15s;
+  }
+  button:hover { background: #7c4dee; }
+  .muted { font-size: 12px; color: #71717a; margin-top: 18px; }
+</style>
+</head>
+<body>
+  <div class="card">
+    <span class="badge"><span class="dot"></span> offline</span>
+    <h1>TIMO 서버에 연결할 수 없어요</h1>
+    <p>로컬 dev 서버가 꺼져 있거나 응답하지 않습니다.<br/>터미널에서 다시 띄워주세요.</p>
+    <pre>npm run dev   # port 3789</pre>
+    <button onclick="location.reload()">다시 시도</button>
+    <div class="muted">서버가 켜지면 자동으로 접속할 수 있어요.</div>
+  </div>
+</body>
+</html>

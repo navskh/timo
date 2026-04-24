@@ -3,6 +3,7 @@ import { Suspense } from 'react';
 import './globals.css';
 import { AppSidebar } from '@/components/AppSidebar';
 import { DialogHost } from '@/components/ui/dialogs';
+import { SwRegister } from '@/components/SwRegister';
 
 export const metadata: Metadata = {
   title: 'TIMO — Think · Idea-Manager · Operation',
@@ -34,6 +35,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <div className="flex-1 min-w-0 overflow-hidden flex flex-col">{children}</div>
         </div>
         <DialogHost />
+        <SwRegister />
       </body>
     </html>
   );
