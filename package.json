@@ -1,6 +1,6 @@
 {
   "name": "@navskh/timo",
-  "version": "0.4.0",
+  "version": "0.4.1",
   "description": "TIMO (im.v2) — Think · Idea-Manager · Operation. Local-first AI pair-programmer that spawns your claude/gemini/codex CLI and organizes tasks as you chat. Successor to idea-manager.",
   "homepage": "https://github.com/navskh/timo#readme",
   "repository": {
@@ -35,8 +35,8 @@
     "dev": "next dev -p 3789",
     "build": "next build --webpack && node ./scripts/post-build.js",
     "lint": "eslint",
-    "tauri": "PATH=\"$HOME/.cargo/bin:$PATH\" tauri",
-    "tauri:dev": "PATH=\"$HOME/.cargo/bin:$PATH\" tauri dev",
+    "tauri": "node scripts/run-tauri.js",
+    "tauri:dev": "node scripts/run-tauri.js dev",
     "tauri:build": "bash scripts/tauri-build.sh"
   },
   "dependencies": {
