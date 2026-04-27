@@ -1,7 +1,7 @@
 import { spawn, type ChildProcess } from 'node:child_process';
 import { existsSync } from 'node:fs';
 import { AGENTS } from './agents';
-import { resolveShellPath } from './path-resolver';
+import { resolveShellPath, findExecutable, searchDirs } from './path-resolver';
 import type { AgentType } from '@/types';
 
 export type OnTextChunk = (text: string) => void;
@@ -42,10 +42,16 @@ export function runAgent(
     // shell so spawn() can resolve the binary the same as in the terminal.
     env.PATH = resolveShellPath();
 
+    // Belt + suspenders: resolve to an absolute path ourselves before spawn.
+    // resolveShellPath above can fail in edge cases (sentinel match miss,
+    // shell rc errors) and leave the PATH still missing the user's install
+    // dir. existsSync over a known list is deterministic.
+    const resolvedBinary = findExecutable(config.binary) ?? config.binary;
+
     const requestedCwd = options?.cwd;
     const effectiveCwd = requestedCwd && existsSync(requestedCwd) ? requestedCwd : process.cwd();
 
-    const proc = spawn(config.binary, args, {
+    const proc = spawn(resolvedBinary, args, {
       cwd: effectiveCwd,
       stdio: ['pipe', 'pipe', 'pipe'],
       shell: process.platform === 'win32',
@@ -68,7 +74,14 @@ export function runAgent(
       if (timeoutTimer) clearTimeout(timeoutTimer);
       const code = (err as NodeJS.ErrnoException).code;
       if (code === 'ENOENT') {
-        reject(new Error(`${config.name} CLI not found on PATH. Install it first.`));
+        // Surface the dirs we tried so users can paste the message into an
+        // issue. With this they don't have to debug the GUI app blindly.
+        const dirs = searchDirs().slice(0, 8).join('\n  ');
+        reject(
+          new Error(
+            `${config.name} CLI (${config.binary}) not found. Tried these directories:\n  ${dirs}\n\nIf your install is elsewhere, add it to your shell PATH (.zshrc / .zprofile) and reopen the app.`,
+          ),
+        );
       } else {
         reject(new Error(`${config.name} CLI error: ${err.message}`));
       }

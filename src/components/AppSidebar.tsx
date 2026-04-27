@@ -7,6 +7,7 @@ import type { IProject, IChatSession } from '@/types';
 import { NewProjectModal } from './NewProjectModal';
 import { ClaudeLimitsBar } from './ClaudeLimitsBar';
 import { confirm, toast } from './ui/dialogs';
+import pkg from '../../package.json';
 
 interface ISkillSummary {
   name: string;
@@ -171,7 +172,7 @@ export function AppSidebar() {
           <Link href="/" className="text-sm font-semibold tracking-tight hover:text-violet-300 transition">
             TIMO
           </Link>
-          <span className="ml-auto text-[10px] text-[var(--fg-dim)] mono">v0.1</span>
+          <span className="ml-auto text-[10px] text-[var(--fg-dim)] mono">v{pkg.version}</span>
         </div>
 
         {/* Action */}

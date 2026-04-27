@@ -1,4 +1,5 @@
 import { execFileSync } from 'node:child_process';
+import { existsSync } from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
 
@@ -74,4 +75,61 @@ export function resolveShellPath(): string {
   }
   cached = merged.join(path.delimiter);
   return cached;
+}
+
+/**
+ * Hunt for `binary` (e.g. "claude") on disk and return an absolute path if
+ * found. We don't trust spawn() to resolve via $PATH alone because:
+ *  - launchd-spawned macOS GUI processes get a minimal PATH;
+ *  - even with resolveShellPath() above, edge cases (rc errors, sentinel
+ *    parsing fails) leave us with a PATH that doesn't include the user's
+ *    install location.
+ *
+ * Checking existsSync against well-known dirs (plus whatever directories
+ * we managed to learn about) is cheap and deterministic. Returns `null`
+ * if nothing matched — callers should still try spawn() with the bare
+ * binary name as a final fallback.
+ */
+export function findExecutable(binary: string): string | null {
+  if (process.platform === 'win32') {
+    // Skip — Windows resolution rules are different (PATHEXT, etc.) and
+    // its GUI processes already have a sane PATH.
+    return null;
+  }
+  const home = os.homedir();
+  const dirs = [
+    path.join(home, '.local', 'bin'),
+    path.join(home, '.claude', 'local'),
+    path.join(home, 'bin'),
+    '/opt/homebrew/bin',
+    '/usr/local/bin',
+    '/usr/bin',
+    '/bin',
+    ...resolveShellPath().split(path.delimiter),
+  ];
+  const seen = new Set<string>();
+  for (const dir of dirs) {
+    if (!dir || seen.has(dir)) continue;
+    seen.add(dir);
+    const candidate = path.join(dir, binary);
+    if (existsSync(candidate)) return candidate;
+  }
+  return null;
+}
+
+/** Just the directory list we'd search — handy for diagnostic error messages. */
+export function searchDirs(): string[] {
+  if (process.platform === 'win32') return [];
+  const home = os.homedir();
+  const dirs = [
+    path.join(home, '.local', 'bin'),
+    path.join(home, '.claude', 'local'),
+    path.join(home, 'bin'),
+    '/opt/homebrew/bin',
+    '/usr/local/bin',
+    '/usr/bin',
+    '/bin',
+    ...resolveShellPath().split(path.delimiter),
+  ];
+  return [...new Set(dirs.filter(Boolean))];
 }
