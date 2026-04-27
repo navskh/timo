@@ -108,7 +108,16 @@ async function ensureNodeBinary(version, triple) {
   if (m.ext === 'tar.xz') {
     execFileSync('tar', ['-xJf', archivePath, '-C', cacheDir], { stdio: 'inherit' });
   } else {
-    execFileSync('unzip', ['-q', archivePath, '-d', cacheDir], { stdio: 'inherit' });
+    // Try `unzip` first (present on macOS/Linux + Git Bash). Bare Windows
+    // runners lack it, so fall back to PowerShell's Expand-Archive.
+    try {
+      execFileSync('unzip', ['-q', archivePath, '-d', cacheDir], { stdio: 'inherit' });
+    } catch {
+      execFileSync('powershell', [
+        '-NoProfile', '-NonInteractive', '-Command',
+        `Expand-Archive -LiteralPath '${archivePath}' -DestinationPath '${cacheDir}' -Force`,
+      ], { stdio: 'inherit' });
+    }
   }
   fs.unlinkSync(archivePath);
 
