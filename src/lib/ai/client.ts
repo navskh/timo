@@ -1,6 +1,7 @@
 import { spawn, type ChildProcess } from 'node:child_process';
 import { existsSync } from 'node:fs';
 import { AGENTS } from './agents';
+import { resolveShellPath } from './path-resolver';
 import type { AgentType } from '@/types';
 
 export type OnTextChunk = (text: string) => void;
@@ -36,6 +37,10 @@ export function runAgent(
     const useStreamJson = !!(onText || onRawEvent);
     const args = config.buildArgs({ streaming: useStreamJson, model: options?.model, maxTurns: options?.maxTurns });
     const env = config.buildEnv();
+    // GUI-launched processes (Tauri sidecar on macOS) get launchd's bare PATH
+    // and miss the user's claude/gemini/codex install. Augment from the user
+    // shell so spawn() can resolve the binary the same as in the terminal.
+    env.PATH = resolveShellPath();
 
     const requestedCwd = options?.cwd;
     const effectiveCwd = requestedCwd && existsSync(requestedCwd) ? requestedCwd : process.cwd();
