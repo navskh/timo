@@ -10,6 +10,12 @@ interface Props {
   onToggleStatus?: (id: string, nextStatus: TaskStatus) => Promise<void> | void;
   /** Called with the new ordering of pending-task IDs after a drag. */
   onReorderPending?: (orderedIds: string[]) => Promise<void> | void;
+  /** Fires a /tidy turn to let the AI reorganize the task list via TodoWrite. */
+  onTidy?: () => Promise<void> | void;
+  /** True while a chat turn is in progress — disable tidy. */
+  tidyDisabled?: boolean;
+  /** True while the tidy request is in flight — show inline progress. */
+  tidyRunning?: boolean;
 }
 
 const STATUS_CYCLE: Record<TaskStatus, TaskStatus> = {
@@ -19,9 +25,23 @@ const STATUS_CYCLE: Record<TaskStatus, TaskStatus> = {
   failed: 'pending',
 };
 
-export function TaskSidebar({ tasks, onDelete, onAdd, onToggleStatus, onReorderPending }: Props) {
+export function TaskSidebar({ tasks, onDelete, onAdd, onToggleStatus, onReorderPending, onTidy, tidyDisabled, tidyRunning }: Props) {
   const [newTitle, setNewTitle] = useState('');
   const [busy, setBusy] = useState(false);
+  const [tidyElapsed, setTidyElapsed] = useState(0);
+
+  // Wall-clock counter while tidy is in flight. Resets on each run.
+  useEffect(() => {
+    if (!tidyRunning) {
+      setTidyElapsed(0);
+      return;
+    }
+    const start = Date.now();
+    const id = setInterval(() => {
+      setTidyElapsed(Math.floor((Date.now() - start) / 1000));
+    }, 250);
+    return () => clearInterval(id);
+  }, [tidyRunning]);
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -42,11 +62,28 @@ export function TaskSidebar({ tasks, onDelete, onAdd, onToggleStatus, onReorderP
 
   return (
     <aside className="w-full h-full flex flex-col border-l border-[var(--border)] bg-[var(--surface-1)]">
-      <div className="h-12 px-3 border-b border-[var(--border)] text-sm font-semibold flex items-center justify-between">
+      <div className="h-12 px-3 border-b border-[var(--border)] text-sm font-semibold flex items-center justify-between gap-2">
         <span className="flex items-center gap-1.5">📋 태스크</span>
-        <span className="text-[11px] text-[var(--fg-dim)] mono">
-          {tasks.filter((t) => t.status === 'done').length}/{tasks.length}
-        </span>
+        <div className="flex items-center gap-2">
+          {onTidy && (
+            tidyRunning ? (
+              <TidyProgress elapsed={tidyElapsed} taskCount={tasks.filter((t) => t.status !== 'done').length} />
+            ) : (
+              <button
+                type="button"
+                onClick={() => onTidy()}
+                disabled={tidyDisabled}
+                className="text-[11px] px-2 py-1 rounded border border-[var(--border)] hover:border-violet-500/60 hover:bg-[var(--surface-3)] transition text-[var(--fg-muted)] hover:text-violet-200 disabled:opacity-40 disabled:cursor-not-allowed"
+                title="AI가 활성 태스크를 검토하고 정리합니다 (완료된 항목은 제외)"
+              >
+                ✨ 정리
+              </button>
+            )
+          )}
+          <span className="text-[11px] text-[var(--fg-dim)] mono">
+            {tasks.filter((t) => t.status === 'done').length}/{tasks.length}
+          </span>
+        </div>
       </div>
 
       {onAdd && (
@@ -227,5 +264,25 @@ function Group({
         })}
       </ul>
     </div>
+  );
+}
+
+function fmtTime(s: number): string {
+  return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
+}
+
+function TidyProgress({ elapsed, taskCount }: { elapsed: number; taskCount: number }) {
+  // Heuristic: per-task latency dominates input-token cost. Empirically ~1s per
+  // active task above an 8s claude-CLI baseline.
+  const estimated = Math.max(15, 8 + Math.ceil(taskCount * 1.2));
+  const overshooting = elapsed > estimated;
+  return (
+    <span
+      className="text-[11px] mono text-violet-200 flex items-center gap-1.5 px-2 py-1 rounded border border-violet-500/40 bg-violet-500/10"
+      title={`AI가 활성 태스크 ${taskCount}개를 검토 중. 보통 ${estimated}초 안에 끝나요.`}
+    >
+      <span className="inline-block w-2 h-2 bg-violet-400 rounded-full animate-pulse" />
+      {overshooting ? `${fmtTime(elapsed)} 조금만 더…` : `${fmtTime(elapsed)} / ~${fmtTime(estimated)}`}
+    </span>
   );
 }

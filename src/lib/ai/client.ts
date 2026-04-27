@@ -10,6 +10,8 @@ export interface RunAgentOptions {
   cwd?: string;
   timeoutMs?: number;
   model?: string;
+  /** Cap the CLI's max-turns (Claude). Useful for single-shot judgments. */
+  maxTurns?: number;
   /** Optional hook to capture the spawned process so callers can cancel. */
   onSpawn?: (proc: ChildProcess) => void;
 }
@@ -32,7 +34,7 @@ export function runAgent(
 
   return new Promise((resolve, reject) => {
     const useStreamJson = !!(onText || onRawEvent);
-    const args = config.buildArgs({ streaming: useStreamJson, model: options?.model });
+    const args = config.buildArgs({ streaming: useStreamJson, model: options?.model, maxTurns: options?.maxTurns });
     const env = config.buildEnv();
 
     const requestedCwd = options?.cwd;
