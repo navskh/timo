@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <!--
+    We ship a Node.js sidecar (`Contents/MacOS/node`) that the main bundle
+    spawns to host the Next.js server. Tauri ad-hoc signs the main bundle
+    but doesn't recursively sign the sidecar, so on macOS Sonoma+ the main
+    process aborts with EXC_CRASH (SIGABRT, code 6) when it tries to spawn
+    an unsigned executable.
+
+    Disabling library validation on the main bundle lets it load the
+    unsigned sidecar without violating Hardened Runtime, which is the
+    cheapest fix while we don't have an Apple Developer cert to do
+    proper Developer ID signing.
+  -->
+  <key>com.apple.security.cs.disable-library-validation</key>
+  <true/>
+  <key>com.apple.security.cs.allow-unsigned-executable-memory</key>
+  <true/>
+  <key>com.apple.security.cs.allow-jit</key>
+  <true/>
+  <key>com.apple.security.cs.allow-dyld-environment-variables</key>
+  <true/>
+</dict>
+</plist>
