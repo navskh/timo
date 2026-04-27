@@ -3,6 +3,53 @@ use std::time::{Duration, Instant};
 use tauri::{Manager, WebviewUrl, WebviewWindowBuilder};
 use tauri_plugin_shell::process::CommandEvent;
 use tauri_plugin_shell::ShellExt;
+use tauri_plugin_updater::UpdaterExt;
+
+#[derive(serde::Serialize)]
+struct UpdateCheckResult {
+  available: bool,
+  current_version: String,
+  version: String,
+}
+
+/// Probe the updater endpoint without downloading. Frontend calls this on
+/// startup; if `available` is true it surfaces a confirm() dialog and then
+/// invokes `install_update`.
+#[tauri::command]
+async fn check_update(app: tauri::AppHandle) -> Result<UpdateCheckResult, String> {
+  let current = app.package_info().version.to_string();
+  let updater = app.updater().map_err(|e| e.to_string())?;
+  match updater.check().await {
+    Ok(Some(update)) => Ok(UpdateCheckResult {
+      available: true,
+      current_version: current,
+      version: update.version.clone(),
+    }),
+    Ok(None) => Ok(UpdateCheckResult {
+      available: false,
+      current_version: current.clone(),
+      version: current,
+    }),
+    Err(e) => Err(e.to_string()),
+  }
+}
+
+/// Download + install the latest update and restart the app. The restart
+/// replaces the current process so this never returns on success.
+#[tauri::command]
+async fn install_update(app: tauri::AppHandle) -> Result<(), String> {
+  let updater = app.updater().map_err(|e| e.to_string())?;
+  let update = updater
+    .check()
+    .await
+    .map_err(|e| e.to_string())?
+    .ok_or_else(|| "no update available".to_string())?;
+  update
+    .download_and_install(|_, _| {}, || {})
+    .await
+    .map_err(|e| e.to_string())?;
+  app.restart();
+}
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -10,6 +57,7 @@ pub fn run() {
     .plugin(tauri_plugin_shell::init())
     .plugin(tauri_plugin_process::init())
     .plugin(tauri_plugin_updater::Builder::new().build())
+    .invoke_handler(tauri::generate_handler![check_update, install_update])
     .setup(|app| {
       if cfg!(debug_assertions) {
         app.handle().plugin(
