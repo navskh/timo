@@ -127,6 +127,50 @@ async function ensureNodeBinary(version, triple) {
   return binPath;
 }
 
+// 3. (macOS only) Compile node-launcher wrapper.
+//
+// On macOS, Tauri sidecars at Contents/MacOS/node show up in the Dock because
+// LaunchServices treats binaries inside Contents/MacOS/ as sub-applications.
+// We replace the bundled `node` with a tiny C wrapper that embeds
+// LSUIElement=YES in its __TEXT,__info_plist section and posix_spawn()s the
+// real node from Contents/Resources/server-resources/node-bin.
+function buildLauncherForMac(triple) {
+  const launcherSrc = path.join(TAURI_DIR, 'launcher', 'launcher.c');
+  const launcherPlist = path.join(TAURI_DIR, 'launcher', 'Info.plist');
+  const outDir = path.join(os.tmpdir(), 'timo-launcher');
+  fs.mkdirSync(outDir, { recursive: true });
+  const out = path.join(outDir, `node-launcher-${triple}`);
+
+  // Map triple → clang -arch flag so the wrapper matches the target.
+  const archFlag = triple.startsWith('aarch64') ? 'arm64'
+    : triple.startsWith('x86_64')  ? 'x86_64'
+    : null;
+  if (!archFlag) throw new Error(`unsupported arch for triple ${triple}`);
+
+  const args = [
+    '-O2',
+    '-arch', archFlag,
+    launcherSrc,
+    '-o', out,
+    '-sectcreate', '__TEXT', '__info_plist', launcherPlist,
+  ];
+  console.log(`[tauri-prepare] compiling launcher: clang ${args.join(' ')}`);
+  execFileSync('clang', args, { stdio: 'inherit' });
+  fs.chmodSync(out, 0o755);
+
+  // Ad-hoc sign so Hardened Runtime accepts it. Tauri also ad-hoc signs
+  // externalBin entries during bundling, but signing here keeps `npm run
+  // tauri:dev` (which skips bundling) consistent.
+  try {
+    execFileSync('codesign', ['--force', '--sign', '-', '--timestamp=none', out], {
+      stdio: 'inherit',
+    });
+  } catch (err) {
+    console.warn('[tauri-prepare] codesign on launcher failed (non-fatal):', err.message);
+  }
+  return out;
+}
+
 (async () => {
   const triple = detectTargetTriple();
   const version = process.versions.node;
@@ -134,10 +178,37 @@ async function ensureNodeBinary(version, triple) {
 
   const binDir = path.join(TAURI_DIR, 'binaries');
   fs.mkdirSync(binDir, { recursive: true });
-  const dest = path.join(binDir, `node-${triple}${triple.includes('windows') ? '.exe' : ''}`);
-  fs.copyFileSync(src, dest);
-  fs.chmodSync(dest, 0o755);
-  console.log(`[tauri-prepare] copied node v${version} → ${path.relative(ROOT, dest)}`);
+
+  const isMac = triple.includes('apple-darwin');
+  const isWin = triple.includes('windows');
+
+  if (isMac) {
+    // Real node lives next to the standalone server in Resources, where
+    // LaunchServices won't treat it as a Dock-eligible application.
+    const nodeBin = path.join(serverDest, 'node-bin');
+    fs.copyFileSync(src, nodeBin);
+    fs.chmodSync(nodeBin, 0o755);
+    try {
+      execFileSync('codesign', ['--force', '--sign', '-', '--timestamp=none', nodeBin], {
+        stdio: 'inherit',
+      });
+    } catch (err) {
+      console.warn('[tauri-prepare] codesign on node-bin failed (non-fatal):', err.message);
+    }
+    console.log(`[tauri-prepare] staged node v${version} → ${path.relative(ROOT, nodeBin)}`);
+
+    // Wrapper takes node's place at Contents/MacOS/node.
+    const wrapper = buildLauncherForMac(triple);
+    const dest = path.join(binDir, `node-${triple}`);
+    fs.copyFileSync(wrapper, dest);
+    fs.chmodSync(dest, 0o755);
+    console.log(`[tauri-prepare] installed launcher → ${path.relative(ROOT, dest)}`);
+  } else {
+    const dest = path.join(binDir, `node-${triple}${isWin ? '.exe' : ''}`);
+    fs.copyFileSync(src, dest);
+    fs.chmodSync(dest, 0o755);
+    console.log(`[tauri-prepare] copied node v${version} → ${path.relative(ROOT, dest)}`);
+  }
 })().catch((err) => {
   console.error('[tauri-prepare]', err);
   process.exit(1);

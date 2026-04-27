@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <!--
+    Embedded as __TEXT,__info_plist into the node-launcher binary so
+    LaunchServices treats this process as a background helper and skips the
+    Dock entry. LSBackgroundOnly is the strongest hint; LSUIElement is a
+    fallback for older macOS releases that ignore LSBackgroundOnly on
+    bundle-less binaries.
+  -->
+  <key>CFBundleIdentifier</key>
+  <string>dev.navskh.timo.sidecar</string>
+  <key>CFBundleName</key>
+  <string>TIMO Server</string>
+  <key>CFBundlePackageType</key>
+  <string>APPL</string>
+  <key>LSBackgroundOnly</key>
+  <true/>
+  <key>LSUIElement</key>
+  <true/>
+</dict>
+</plist>

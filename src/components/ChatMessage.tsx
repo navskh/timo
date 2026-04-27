@@ -257,7 +257,7 @@ function ToolPair({
         {/* input */}
         <div>
           <div className="text-[10px] text-gray-500 mono mb-1 uppercase tracking-wider">input</div>
-          <pre className="mono text-[11.5px] text-gray-300 whitespace-pre-wrap break-words max-h-64 overflow-y-auto">
+          <pre className="mono text-[11.5px] text-gray-300 whitespace-pre-wrap break-words max-h-64 overflow-y-auto scrollbar-slim">
             {typeof use.input === 'string' ? use.input : JSON.stringify(use.input, null, 2)}
           </pre>
         </div>
@@ -267,7 +267,7 @@ function ToolPair({
             <div className={`text-[10px] mono mb-1 uppercase tracking-wider ${isError ? 'text-red-400' : 'text-gray-500'}`}>
               {isError ? 'error' : 'result'}
             </div>
-            <pre className="mono text-[11.5px] text-gray-300 whitespace-pre-wrap break-words max-h-72 overflow-y-auto">
+            <pre className="mono text-[11.5px] text-gray-300 whitespace-pre-wrap break-words max-h-72 overflow-y-auto scrollbar-slim">
               {result.content}
             </pre>
           </div>
@@ -286,7 +286,7 @@ function ToolResultPill({ result }: { result: Extract<ChatBlock, { kind: 'tool_r
         <span className="text-base">↩</span>
         <span className="mono">tool result {result.isError ? '(error)' : ''}</span>
       </summary>
-      <pre className="mono text-[11.5px] text-gray-300 whitespace-pre-wrap break-words max-h-64 overflow-y-auto border-t border-[var(--border)] px-3 py-2 bg-black/30">
+      <pre className="mono text-[11.5px] text-gray-300 whitespace-pre-wrap break-words max-h-64 overflow-y-auto scrollbar-slim border-t border-[var(--border)] px-3 py-2 bg-black/30">
         {result.content}
       </pre>
     </details>
