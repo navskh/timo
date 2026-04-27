@@ -42,6 +42,23 @@ export function setSessionModel(id: string, model: string | null): void {
     .run(model, id);
 }
 
+export function setMessageSuggestions(messageId: string, suggestions: string[]): void {
+  getDb()
+    .prepare(`UPDATE chat_messages SET suggestions_json = ? WHERE id = ?`)
+    .run(JSON.stringify(suggestions ?? []), messageId);
+}
+
+export function getLastAssistantMessage(sessionId: string): IChatMessage | undefined {
+  return getDb()
+    .prepare(
+      `SELECT * FROM chat_messages
+       WHERE session_id = ? AND role = 'assistant'
+       ORDER BY created_at DESC, id DESC
+       LIMIT 1`,
+    )
+    .get(sessionId) as IChatMessage | undefined;
+}
+
 export function deleteSession(id: string): void {
   getDb().prepare('DELETE FROM chat_sessions WHERE id = ?').run(id);
 }

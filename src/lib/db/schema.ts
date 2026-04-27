@@ -65,6 +65,7 @@ export function initSchema(db: any): void {
       role TEXT NOT NULL CHECK(role IN ('user','assistant','system')),
       content TEXT NOT NULL DEFAULT '',
       blocks_json TEXT NOT NULL DEFAULT '[]',
+      suggestions_json TEXT NOT NULL DEFAULT '[]',
       created_at TEXT NOT NULL DEFAULT (datetime('now')),
       FOREIGN KEY (session_id) REFERENCES chat_sessions(id) ON DELETE CASCADE
     );
@@ -80,5 +81,10 @@ export function initSchema(db: any): void {
   const sessionCols = db.prepare("PRAGMA table_info(chat_sessions)").all() as { name: string }[];
   if (!sessionCols.some((c) => c.name === 'model')) {
     db.exec("ALTER TABLE chat_sessions ADD COLUMN model TEXT");
+  }
+
+  const messageCols = db.prepare("PRAGMA table_info(chat_messages)").all() as { name: string }[];
+  if (!messageCols.some((c) => c.name === 'suggestions_json')) {
+    db.exec("ALTER TABLE chat_messages ADD COLUMN suggestions_json TEXT NOT NULL DEFAULT '[]'");
   }
 }

@@ -8,9 +8,13 @@ interface Props {
   role: ChatRole;
   blocks: ChatBlock[];
   streaming?: boolean;
+  /** Follow-up suggestions shown under the last assistant turn only. */
+  suggestions?: string[];
+  /** True if suggestions are still generating in the background. */
+  suggestionsLoading?: boolean;
 }
 
-export function ChatMessage({ role, blocks, streaming }: Props) {
+export function ChatMessage({ role, blocks, streaming, suggestions, suggestionsLoading }: Props) {
   if (role === 'user') {
     const textParts = blocks.filter((b) => b.kind === 'text').map((b) => (b as { content: string }).content);
     const imageBlocks = blocks.filter((b): b is Extract<ChatBlock, { kind: 'image' }> => b.kind === 'image');
@@ -58,7 +62,44 @@ export function ChatMessage({ role, blocks, streaming }: Props) {
           <ClusterRenderer key={i} cluster={cluster} />
         ))}
         {streaming && <div className="text-xs text-violet-400 animate-pulse">● 생각 중…</div>}
+        {!streaming && (suggestions?.length || suggestionsLoading) && (
+          <Suggestions suggestions={suggestions ?? []} loading={suggestionsLoading} />
+        )}
       </div>
+    </div>
+  );
+}
+
+function Suggestions({ suggestions, loading }: { suggestions: string[]; loading?: boolean }) {
+  if (loading && suggestions.length === 0) {
+    return (
+      <div className="flex items-center gap-2 text-[11px] text-[var(--fg-dim)] mono pt-1">
+        <span className="animate-pulse">💭 다음 프롬프트 제안 중…</span>
+      </div>
+    );
+  }
+  const labels = ['▶ 진행', '🔍 검증', '💭 대안'];
+  return (
+    <div className="pt-1 flex flex-wrap gap-2 max-w-[740px]">
+      {suggestions.map((s, i) => (
+        <button
+          key={i}
+          onClick={() => {
+            window.dispatchEvent(
+              new CustomEvent('timo:fill-composer', { detail: { text: s } }),
+            );
+          }}
+          className="group/chip flex items-start gap-2 max-w-full text-left px-3 py-1.5 rounded-lg border border-[var(--border)] bg-[var(--surface-2)] hover:border-violet-500/60 hover:bg-[var(--surface-3)] transition text-[12px]"
+          title="클릭해서 입력창에 채우기"
+        >
+          <span className="text-[10px] text-[var(--fg-dim)] mono shrink-0 pt-0.5 group-hover/chip:text-violet-300">
+            {labels[i] ?? '·'}
+          </span>
+          <span className="text-gray-200 group-hover/chip:text-white leading-relaxed">
+            {s}
+          </span>
+        </button>
+      ))}
     </div>
   );
 }

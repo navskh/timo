@@ -64,6 +64,8 @@ export interface IChatMessage {
   content: string;
   /** JSON-encoded array of ChatBlock — assistant text + tool_use + tool_result blocks in order. */
   blocks_json: string;
+  /** JSON-encoded array of follow-up prompt suggestions (assistant messages only). */
+  suggestions_json: string;
   created_at: string;
 }
 
