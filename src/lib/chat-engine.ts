@@ -9,7 +9,7 @@ import {
 } from './db/queries/chat';
 import { syncTodos } from './todo-sync';
 import { extractSkillFromMessage, listSkills, type ISkill } from './skills';
-import { markRunning, markIdle } from './chat-state';
+import { markRunning, markIdle, setProcess, clearProcess } from './chat-state';
 import type { IChatMessage, ChatBlock, IChatSession, ITask, AgentType, IAttachment } from '@/types';
 
 export type ChatEvent =
@@ -210,6 +210,7 @@ export async function runChatTurn(
       {
         cwd: project.project_path ?? undefined,
         model: session.model ?? undefined,
+        onSpawn: (proc) => setProcess(sessionId, proc),
       },
     );
 
@@ -223,16 +224,24 @@ export async function runChatTurn(
     sink({ type: 'assistant-message-saved', message: assistantMsg });
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
-    assistantBlocks.push({ kind: 'error', content: message });
+    const interrupted =
+      message.includes('SIGTERM') ||
+      message.includes('killed by signal') ||
+      message.includes('timed out');
+    assistantBlocks.push({
+      kind: interrupted ? 'system' : 'error',
+      content: interrupted ? '⏸ 사용자가 응답을 중단했어요' : message,
+    });
     const assistantMsg = addMessage({
       session_id: sessionId,
       role: 'assistant',
-      content: `(error) ${message}`,
+      content: interrupted ? '(중단됨)' : `(error) ${message}`,
       blocks: assistantBlocks,
     });
-    sink({ type: 'error', message });
+    if (!interrupted) sink({ type: 'error', message });
     sink({ type: 'assistant-message-saved', message: assistantMsg });
   } finally {
+    clearProcess(sessionId);
     markIdle(sessionId);
     sink({ type: 'done' });
   }
