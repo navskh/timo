@@ -13,6 +13,7 @@ interface ISkillSummary {
 interface Props {
   running: boolean;
   onSend: (text: string, attachments: IAttachment[]) => void;
+  onStop?: () => void;
 }
 
 interface PendingAttachment extends IAttachment {
@@ -20,7 +21,7 @@ interface PendingAttachment extends IAttachment {
   uploadingKey?: string;
 }
 
-export function Composer({ running, onSend }: Props) {
+export function Composer({ running, onSend, onStop }: Props) {
   const [value, setValue] = useState('');
   const [skills, setSkills] = useState<ISkillSummary[]>([]);
   const [menu, setMenu] = useState<{ filter: string; index: number } | null>(null);
@@ -46,8 +47,21 @@ export function Composer({ running, onSend }: Props) {
       });
       setTimeout(() => taRef.current?.focus(), 0);
     };
+    const onFill = (e: Event) => {
+      const detail = (e as CustomEvent<{ text: string }>).detail;
+      if (!detail?.text) return;
+      setValue(detail.text);
+      setTimeout(() => {
+        taRef.current?.focus();
+        taRef.current?.setSelectionRange(detail.text.length, detail.text.length);
+      }, 0);
+    };
     window.addEventListener('timo:insert-skill', onInsert);
-    return () => window.removeEventListener('timo:insert-skill', onInsert);
+    window.addEventListener('timo:fill-composer', onFill);
+    return () => {
+      window.removeEventListener('timo:insert-skill', onInsert);
+      window.removeEventListener('timo:fill-composer', onFill);
+    };
   }, []);
 
   useEffect(() => {
@@ -186,6 +200,12 @@ export function Composer({ running, onSend }: Props) {
     }
 
     if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
+      // While a turn is streaming, Enter is reserved for a future release of
+      // the interrupt-and-send flow — for now, guide the user to stop first.
+      if (running) {
+        e.preventDefault();
+        return;
+      }
       e.preventDefault();
       submit();
     }
@@ -271,7 +291,6 @@ export function Composer({ running, onSend }: Props) {
         <button
           type="button"
           onClick={() => fileInputRef.current?.click()}
-          disabled={running}
           className="h-[60px] w-[44px] flex items-center justify-center rounded-lg border border-[var(--border)] bg-[var(--surface-2)] hover:border-violet-500/50 hover:bg-[var(--surface-3)] disabled:opacity-40 transition text-lg"
           title="이미지 첨부 (드래그·Ctrl+V도 가능)"
         >
@@ -295,19 +314,34 @@ export function Composer({ running, onSend }: Props) {
           onChange={(e) => setValue(e.target.value)}
           onKeyDown={handleKey}
           onPaste={handlePaste}
-          placeholder={running ? 'TIMO가 작업 중…' : '무엇을 부탁할까요?  (Enter 전송 · Shift+Enter 줄바꿈 · / 스킬 · 이미지 드래그/붙여넣기)'}
-          disabled={running}
+          placeholder={
+            running
+              ? '응답 중이에요 — 중단하려면 오른쪽 ⏹ 버튼. 다음 메시지 미리 타이핑해두셔도 돼요.'
+              : '무엇을 부탁할까요?  (Enter 전송 · Shift+Enter 줄바꿈 · / 스킬 · 이미지 드래그/붙여넣기)'
+          }
           rows={2}
-          className="flex-1 bg-[var(--surface-2)] border border-[var(--border)] focus:border-violet-500 rounded-lg px-3.5 py-2.5 text-sm resize-none outline-none disabled:opacity-50 transition-colors"
+          className="flex-1 bg-[var(--surface-2)] border border-[var(--border)] focus:border-violet-500 rounded-lg px-3.5 py-2.5 text-sm resize-none outline-none transition-colors"
           style={{ fontFamily: 'inherit' }}
         />
-        <button
-          onClick={submit}
-          disabled={!canSend}
-          className="h-[60px] px-5 bg-violet-600 hover:bg-violet-500 disabled:opacity-40 disabled:cursor-not-allowed rounded-lg text-sm font-medium transition shrink-0"
-        >
-          {running ? '…' : uploading > 0 ? '업로드' : '전송'}
-        </button>
+        {running ? (
+          <button
+            type="button"
+            onClick={() => onStop?.()}
+            className="h-[60px] px-5 bg-red-600 hover:bg-red-500 rounded-lg text-sm font-medium transition shrink-0 flex items-center gap-2"
+            title="실행 중단 (SIGTERM)"
+          >
+            <span className="inline-block w-2.5 h-2.5 bg-white rounded-sm" />
+            중단
+          </button>
+        ) : (
+          <button
+            onClick={submit}
+            disabled={!canSend}
+            className="h-[60px] px-5 bg-violet-600 hover:bg-violet-500 disabled:opacity-40 disabled:cursor-not-allowed rounded-lg text-sm font-medium transition shrink-0"
+          >
+            {uploading > 0 ? '업로드' : '전송'}
+          </button>
+        )}
       </div>
     </div>
   );

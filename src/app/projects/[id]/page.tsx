@@ -24,6 +24,8 @@ export default function ProjectChatPage({ params }: { params: Promise<{ id: stri
   const [streamingBlocks, setStreamingBlocks] = useState<ChatBlock[] | null>(null);
   const [pickingPath, setPickingPath] = useState(false);
   const [externalRunning, setExternalRunning] = useState(false);
+  const [suggestionsLoading, setSuggestionsLoading] = useState(false);
+  const [tidying, setTidying] = useState(false);
 
   const { events, running, start } = useSSEStream();
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -153,8 +155,19 @@ export default function ProjectChatPage({ params }: { params: Promise<{ id: stri
       loadTasks();
       loadSessions();
       window.dispatchEvent(new Event('timo:refresh-sidebar'));
+      // Kick off follow-up suggestion generation for the just-completed turn.
+      if (currentSessionId) {
+        setSuggestionsLoading(true);
+        fetch(`/api/sessions/${currentSessionId}/suggest`, { method: 'POST' })
+          .then((r) => r.json())
+          .catch(() => ({ suggestions: [] }))
+          .finally(() => {
+            setSuggestionsLoading(false);
+            if (currentSessionId) loadMessages(currentSessionId);
+          });
+      }
     }
-  }, [events, running, loadTasks, loadSessions]);
+  }, [events, running, loadTasks, loadSessions, currentSessionId, loadMessages]);
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -175,6 +188,41 @@ export default function ProjectChatPage({ params }: { params: Promise<{ id: stri
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ text, attachments }),
     });
+  }
+
+  async function stopCurrent() {
+    if (!currentSessionId) return;
+    await fetch(`/api/sessions/${currentSessionId}/interrupt`, { method: 'POST' });
+    // SSE 'error'→'done' will flow through; local `running` flips back to false.
+  }
+
+  async function tidyTasks() {
+    if (tidying) return;
+    setTidying(true);
+    try {
+      const res = await fetch(`/api/projects/${id}/tidy-tasks`, { method: 'POST' });
+      const data = await res.json();
+      if (!res.ok) {
+        toast.error(data.error ?? '정리 실패');
+      } else {
+        const s = data.summary;
+        const changed = s.marked_done + s.deleted + s.renamed;
+        if (changed === 0) {
+          toast.info(`변경된 항목 없음 (${s.total}개 모두 유지)`, 6000);
+        } else {
+          const parts: string[] = [];
+          if (s.marked_done) parts.push(`완료 ${s.marked_done}`);
+          if (s.deleted) parts.push(`삭제 ${s.deleted}`);
+          if (s.renamed) parts.push(`이름변경 ${s.renamed}`);
+          toast.success(`✨ ${parts.join(' · ')} (전체 ${s.total} → 유지 ${s.kept})`, 12000);
+        }
+      }
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : String(err));
+    } finally {
+      loadTasks();
+      setTidying(false);
+    }
   }
 
   async function deleteTask(taskId: string) {
@@ -355,15 +403,31 @@ export default function ProjectChatPage({ params }: { params: Promise<{ id: stri
               )}
             </div>
           )}
-          {messages.map((m) => {
-            let blocks: ChatBlock[] = [];
-            try {
-              blocks = JSON.parse(m.blocks_json);
-            } catch {
-              blocks = [{ kind: 'text', content: m.content }];
-            }
-            return <ChatMessage key={m.id} role={m.role} blocks={blocks} />;
-          })}
+          {(() => {
+            const lastAssistantId = [...messages].reverse().find((m) => m.role === 'assistant')?.id;
+            return messages.map((m) => {
+              let blocks: ChatBlock[] = [];
+              try {
+                blocks = JSON.parse(m.blocks_json);
+              } catch {
+                blocks = [{ kind: 'text', content: m.content }];
+              }
+              const isLastAssistant = m.id === lastAssistantId;
+              let suggestions: string[] = [];
+              if (isLastAssistant) {
+                try { suggestions = JSON.parse(m.suggestions_json ?? '[]'); } catch { /* ignore */ }
+              }
+              return (
+                <ChatMessage
+                  key={m.id}
+                  role={m.role}
+                  blocks={blocks}
+                  suggestions={isLastAssistant ? suggestions : undefined}
+                  suggestionsLoading={isLastAssistant && !streamingBlocks ? suggestionsLoading : false}
+                />
+              );
+            });
+          })()}
           {streamingBlocks && <ChatMessage role="assistant" blocks={streamingBlocks} streaming />}
           {!streamingBlocks && externalRunning && (
             <div className="flex gap-3 px-2 items-center text-[var(--fg-muted)]">
@@ -386,7 +450,7 @@ export default function ProjectChatPage({ params }: { params: Promise<{ id: stri
         {/* Composer */}
         <div className="border-t border-[var(--border)] bg-[var(--surface-1)] px-4 py-3">
           <div className="max-w-4xl mx-auto">
-            <Composer running={running || externalRunning} onSend={send} />
+            <Composer running={running || externalRunning} onSend={send} onStop={stopCurrent} />
           </div>
         </div>
       </section>
@@ -398,6 +462,9 @@ export default function ProjectChatPage({ params }: { params: Promise<{ id: stri
           onAdd={addTask}
           onToggleStatus={toggleTaskStatus}
           onReorderPending={reorderPending}
+          onTidy={tidyTasks}
+          tidyDisabled={tidying}
+          tidyRunning={tidying}
         />
       </div>
 
