@@ -1,8 +1,10 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { getSkillsDir } from './utils/paths';
-import { SEED_SKILLS } from './skills-seed';
+import { SEED_SKILLS, PRE_LEDGER_SEEDS } from './skills-seed';
 import type { AgentType } from '@/types';
+
+const SEED_LEDGER_FILE = '.seeded.json';
 
 export interface ISkill {
   /** Slug used for filename and URL: /api/skills/[name]. Matches frontmatter name. */
@@ -93,13 +95,46 @@ function skillFromFile(filePath: string): ISkill | null {
   }
 }
 
-/** Seed the skills directory with defaults if empty on first run. */
+/**
+ * Ensure each entry in SEED_SKILLS has been written to the skills dir at least
+ * once. Tracked via `.seeded.json` so:
+ *   - first run on a fresh machine: every seed gets written
+ *   - update brings new seeds: only the new ones get written
+ *   - user deletes a seeded file: it does NOT come back (ledger remembers)
+ *
+ * For users who pre-date the ledger, we bootstrap by treating the original
+ * five seeds as already-applied (regardless of whether they're still on disk),
+ * so a previously-deleted skill doesn't get resurrected on this upgrade.
+ */
 function ensureSeeded(): void {
   const dir = getSkillsDir();
-  const existing = fs.readdirSync(dir).filter((f) => f.endsWith('.md'));
-  if (existing.length > 0) return;
+  const ledgerPath = path.join(dir, SEED_LEDGER_FILE);
+  let ledger: Record<string, boolean>;
+  try {
+    ledger = JSON.parse(fs.readFileSync(ledgerPath, 'utf8'));
+  } catch {
+    // No ledger file yet. If the dir already has any .md files, this is an
+    // existing user; the original seeds were already presented to them, so
+    // mark them as seeded. Brand-new seeds added in newer versions still get
+    // written below.
+    const hasExistingFiles = fs.readdirSync(dir).some((f) => f.endsWith('.md'));
+    ledger = hasExistingFiles
+      ? Object.fromEntries(PRE_LEDGER_SEEDS.map((f) => [f, true]))
+      : {};
+  }
+
+  let changed = false;
   for (const { filename, body } of SEED_SKILLS) {
-    fs.writeFileSync(path.join(dir, filename), body, 'utf8');
+    if (ledger[filename]) continue;
+    const filePath = path.join(dir, filename);
+    if (!fs.existsSync(filePath)) {
+      fs.writeFileSync(filePath, body, 'utf8');
+    }
+    ledger[filename] = true;
+    changed = true;
+  }
+  if (changed) {
+    fs.writeFileSync(ledgerPath, `${JSON.stringify(ledger, null, 2)}\n`, 'utf8');
   }
 }
 
