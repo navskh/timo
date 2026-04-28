@@ -15,10 +15,14 @@ const subscribeNoop = () => () => {};
 const getMounted = () => true;
 const getServerMounted = () => false;
 
+const DROPDOWN_WIDTH = 280;
+const DROPDOWN_HEIGHT_ESTIMATE = 320;
+const VIEWPORT_PAD = 8;
+
 export default function ThemePicker({ variant = 'compact' }: IPickerProps) {
   const { theme, setTheme, themes } = useTheme();
   const [open, setOpen] = useState(false);
-  const [pos, setPos] = useState({ top: 0, right: 0 });
+  const [pos, setPos] = useState({ top: 0, left: 0 });
   const btnRef = useRef<HTMLButtonElement>(null);
   const dropRef = useRef<HTMLDivElement>(null);
   const mounted = useSyncExternalStore(subscribeNoop, getMounted, getServerMounted);
@@ -26,7 +30,21 @@ export default function ThemePicker({ variant = 'compact' }: IPickerProps) {
   useEffect(() => {
     if (!open) return;
     const r = btnRef.current?.getBoundingClientRect();
-    if (r) setPos({ top: r.bottom + 6, right: window.innerWidth - r.right });
+    if (r) {
+      // Prefer to open to the right of the button (so the picker doesn't sit
+      // on top of the sidebar nav). Fall back to opening leftward if the
+      // viewport doesn't have room on the right.
+      const rightEdge = r.right + 6;
+      const leftEdge = r.left - DROPDOWN_WIDTH - 6;
+      const fitsRight = rightEdge + DROPDOWN_WIDTH <= window.innerWidth - VIEWPORT_PAD;
+      const fitsLeft = leftEdge >= VIEWPORT_PAD;
+      let left: number;
+      if (fitsRight) left = rightEdge;
+      else if (fitsLeft) left = leftEdge;
+      else left = Math.max(VIEWPORT_PAD, window.innerWidth - DROPDOWN_WIDTH - VIEWPORT_PAD);
+      const top = Math.min(r.top, window.innerHeight - DROPDOWN_HEIGHT_ESTIMATE - VIEWPORT_PAD);
+      setPos({ top: Math.max(VIEWPORT_PAD, top), left });
+    }
     const onDown = (e: MouseEvent) => {
       const t = e.target as Node;
       if (btnRef.current?.contains(t) || dropRef.current?.contains(t)) return;
@@ -63,8 +81,8 @@ export default function ThemePicker({ variant = 'compact' }: IPickerProps) {
       {mounted && open && createPortal(
         <div
           ref={dropRef}
-          style={{ position: 'fixed', top: pos.top, right: pos.right, zIndex: 60 }}
-          className="w-[280px] rounded-lg border border-[var(--border)] bg-[var(--surface-1)] shadow-2xl p-2"
+          style={{ position: 'fixed', top: pos.top, left: pos.left, width: DROPDOWN_WIDTH, zIndex: 60 }}
+          className="rounded-lg border border-[var(--border)] bg-[var(--surface-1)] shadow-2xl p-2"
         >
           <div className="px-2 py-1.5 text-[10px] mono uppercase tracking-wider text-[var(--fg-dim)]">
             테마
