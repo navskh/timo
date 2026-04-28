@@ -81,7 +81,7 @@ export function ClaudeLimitsBar() {
   if (status === 'unconfigured') {
     return (
       <div className="border-t border-[var(--border)] px-3 py-2 text-[11px] text-[var(--fg-dim)]">
-        <Link href="/settings" className="hover:text-violet-300 transition">
+        <Link href="/settings" className="hover:text-[var(--accent-soft)] transition">
           ⚡ Claude 한도 연결 →
         </Link>
       </div>
@@ -123,7 +123,7 @@ export function ClaudeLimitsBar() {
             e.preventDefault();
             load();
           }}
-          className="text-[10px] text-[var(--fg-dim)] hover:text-violet-300"
+          className="text-[10px] text-[var(--fg-dim)] hover:text-[var(--accent-soft)]"
           title="새로고침"
         >
           ↻

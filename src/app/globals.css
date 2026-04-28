@@ -1,6 +1,8 @@
 @import "tailwindcss";
 
-:root {
+/* Default theme tokens — Midnight (dark + violet).
+   Other themes override these via [data-theme="..."] below. */
+:root, [data-theme="midnight"] {
   --bg: #0a0a0c;
   --surface-1: #0f0f13;
   --surface-2: #15151a;
@@ -13,12 +15,166 @@
   --fg-dim: #64656d;
   --accent: #8b5cf6;
   --accent-soft: #a78bfa;
+  --accent-strong: #7c3aed;
   --accent-bg: rgba(139, 92, 246, 0.12);
+  --accent-tint: rgba(139, 92, 246, 0.06);
+  --accent-border: rgba(139, 92, 246, 0.5);
+  --accent-on: #ffffff;
+  --scheme: dark;
 
   /* legacy aliases kept for existing components */
   --background: var(--bg);
   --muted: var(--surface-2);
 }
+
+[data-theme="slate"] {
+  --bg: #f5f6f8;
+  --surface-1: #ffffff;
+  --surface-2: #eef0f3;
+  --surface-3: #e3e6eb;
+  --surface-4: #d4d8df;
+  --border: #d4d8df;
+  --border-strong: #b6bcc6;
+  --foreground: #14171c;
+  --fg-muted: #4d535e;
+  --fg-dim: #7a808a;
+  --accent: #6d4cd1;
+  --accent-soft: #5638b3;
+  --accent-strong: #5638b3;
+  --accent-bg: rgba(109, 76, 209, 0.12);
+  --accent-tint: rgba(109, 76, 209, 0.06);
+  --accent-border: rgba(109, 76, 209, 0.5);
+  --accent-on: #ffffff;
+  --scheme: light;
+}
+
+[data-theme="nord"] {
+  --bg: #2e3440;
+  --surface-1: #313846;
+  --surface-2: #3b4252;
+  --surface-3: #434c5e;
+  --surface-4: #4c566a;
+  --border: #434c5e;
+  --border-strong: #5e6779;
+  --foreground: #eceff4;
+  --fg-muted: #d8dee9;
+  --fg-dim: #8b95a5;
+  --accent: #88c0d0;
+  --accent-soft: #b3d3df;
+  --accent-strong: #5e81ac;
+  --accent-bg: rgba(136, 192, 208, 0.16);
+  --accent-tint: rgba(136, 192, 208, 0.07);
+  --accent-border: rgba(136, 192, 208, 0.45);
+  --accent-on: #2e3440;
+  --scheme: dark;
+}
+
+[data-theme="ocean"] {
+  --bg: #06141f;
+  --surface-1: #0a1c2c;
+  --surface-2: #0f283d;
+  --surface-3: #163450;
+  --surface-4: #1e445f;
+  --border: #1e3a52;
+  --border-strong: #2a5170;
+  --foreground: #e6f1f9;
+  --fg-muted: #8ab2cc;
+  --fg-dim: #5a809a;
+  --accent: #22d3ee;
+  --accent-soft: #67e8f9;
+  --accent-strong: #0891b2;
+  --accent-bg: rgba(34, 211, 238, 0.12);
+  --accent-tint: rgba(34, 211, 238, 0.06);
+  --accent-border: rgba(34, 211, 238, 0.45);
+  --accent-on: #052028;
+  --scheme: dark;
+}
+
+[data-theme="forest"] {
+  --bg: #0a1410;
+  --surface-1: #0f1d17;
+  --surface-2: #15281f;
+  --surface-3: #1d3a2c;
+  --surface-4: #265240;
+  --border: #1e3528;
+  --border-strong: #2d4a38;
+  --foreground: #ecfbf2;
+  --fg-muted: #88b09b;
+  --fg-dim: #547569;
+  --accent: #34d399;
+  --accent-soft: #6ee7b7;
+  --accent-strong: #059669;
+  --accent-bg: rgba(52, 211, 153, 0.12);
+  --accent-tint: rgba(52, 211, 153, 0.06);
+  --accent-border: rgba(52, 211, 153, 0.45);
+  --accent-on: #052017;
+  --scheme: dark;
+}
+
+[data-theme="sunset"] {
+  --bg: #14080c;
+  --surface-1: #1d0d11;
+  --surface-2: #281418;
+  --surface-3: #381c22;
+  --surface-4: #4a2630;
+  --border: #38201f;
+  --border-strong: #4d2d2c;
+  --foreground: #fdebe2;
+  --fg-muted: #c08e7e;
+  --fg-dim: #8a5e51;
+  --accent: #fb923c;
+  --accent-soft: #fdba74;
+  --accent-strong: #ea580c;
+  --accent-bg: rgba(251, 146, 60, 0.12);
+  --accent-tint: rgba(251, 146, 60, 0.06);
+  --accent-border: rgba(251, 146, 60, 0.45);
+  --accent-on: #1c0c08;
+  --scheme: dark;
+}
+
+[data-theme="rose"] {
+  --bg: #160a14;
+  --surface-1: #1f0f1a;
+  --surface-2: #2a1525;
+  --surface-3: #3a1d31;
+  --surface-4: #4d2940;
+  --border: #38202f;
+  --border-strong: #4d2c3e;
+  --foreground: #fce7f3;
+  --fg-muted: #c08aa3;
+  --fg-dim: #8a5872;
+  --accent: #f472b6;
+  --accent-soft: #f9a8d4;
+  --accent-strong: #db2777;
+  --accent-bg: rgba(244, 114, 182, 0.12);
+  --accent-tint: rgba(244, 114, 182, 0.06);
+  --accent-border: rgba(244, 114, 182, 0.45);
+  --accent-on: #1f0a14;
+  --scheme: dark;
+}
+
+[data-theme="mono"] {
+  --bg: #0a0a0a;
+  --surface-1: #0f0f0f;
+  --surface-2: #161616;
+  --surface-3: #1f1f1f;
+  --surface-4: #2a2a2a;
+  --border: #2a2a2a;
+  --border-strong: #3a3a3a;
+  --foreground: #fafafa;
+  --fg-muted: #a1a1a1;
+  --fg-dim: #6a6a6a;
+  --accent: #e5e5e5;
+  --accent-soft: #fafafa;
+  --accent-strong: #a3a3a3;
+  --accent-bg: rgba(229, 229, 229, 0.10);
+  --accent-tint: rgba(229, 229, 229, 0.05);
+  --accent-border: rgba(229, 229, 229, 0.4);
+  --accent-on: #0a0a0a;
+  --scheme: dark;
+}
+
+html { color-scheme: var(--scheme); }
 
 html, body {
   background: var(--bg);
@@ -45,14 +201,14 @@ button:disabled { cursor: not-allowed; }
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, "Courier New", monospace;
 }
 
-/* Scrollbar styling — subtle by default, violet on hover. Applies app-wide.
+/* Scrollbar styling — pulls colors from theme tokens so it follows the theme.
    Note: do NOT set `scrollbar-width: thin` — modern Chromium/WebKit treats it
    as the standard property and ignores the ::-webkit-scrollbar width below. */
 * {
-  scrollbar-color: #4a4a55 transparent;
+  scrollbar-color: var(--border-strong) transparent;
 }
 *:hover {
-  scrollbar-color: #6d5aa3 transparent;
+  scrollbar-color: var(--accent-strong) transparent;
 }
 
 *::-webkit-scrollbar {
@@ -63,7 +219,7 @@ button:disabled { cursor: not-allowed; }
   background: transparent;
 }
 *::-webkit-scrollbar-thumb {
-  background: #3a3a45;
+  background: var(--border-strong);
   border: 3px solid transparent;
   border-radius: 10px;
   background-clip: padding-box;
@@ -71,11 +227,11 @@ button:disabled { cursor: not-allowed; }
   min-height: 40px;
 }
 *::-webkit-scrollbar-thumb:hover {
-  background: #6d5aa3;
+  background: var(--accent-strong);
   background-clip: padding-box;
 }
 *::-webkit-scrollbar-thumb:active {
-  background: #8b5cf6;
+  background: var(--accent);
   background-clip: padding-box;
 }
 *::-webkit-scrollbar-corner {
@@ -88,18 +244,18 @@ button:disabled { cursor: not-allowed; }
   height: 8px;
 }
 .scrollbar-slim::-webkit-scrollbar-thumb {
-  background: #2e2e38;
+  background: var(--border);
   border: 2px solid transparent;
   border-radius: 6px;
   background-clip: padding-box;
 }
 .scrollbar-slim::-webkit-scrollbar-thumb:hover {
-  background: #5b4a8a;
+  background: var(--accent-strong);
   background-clip: padding-box;
 }
 
 /* Markdown body — applies to assistant text blocks. */
-.md-body { color: #e8e8ec; }
+.md-body { color: var(--foreground); }
 .md-body > *:first-child { margin-top: 0 !important; }
 .md-body > *:last-child { margin-bottom: 0 !important; }
 
@@ -113,28 +269,28 @@ button:disabled { cursor: not-allowed; }
   font-weight: 700;
   line-height: 1.3;
   margin: 1.3em 0 0.5em;
-  color: #fff;
+  color: var(--foreground);
 }
 .md-body h1 { font-size: 1.5rem; letter-spacing: -0.01em; }
 .md-body h2 {
   font-size: 1.2rem;
   padding-bottom: 0.3em;
-  border-bottom: 1px solid #2a2a2f;
+  border-bottom: 1px solid var(--border);
 }
-.md-body h3 { font-size: 1.05rem; color: #ddd6fe; }
-.md-body h4 { font-size: 0.95rem; color: #c4b5fd; }
+.md-body h3 { font-size: 1.05rem; color: var(--accent-soft); }
+.md-body h4 { font-size: 0.95rem; color: var(--accent-soft); }
 
-.md-body strong { color: #fff; font-weight: 700; }
-.md-body em { color: #e9d5ff; font-style: italic; }
+.md-body strong { color: var(--foreground); font-weight: 700; }
+.md-body em { color: var(--accent-soft); font-style: italic; }
 
 .md-body a {
-  color: #a78bfa;
+  color: var(--accent-soft);
   text-decoration: underline;
   text-underline-offset: 3px;
-  text-decoration-color: rgba(167, 139, 250, 0.45);
+  text-decoration-color: var(--accent-border);
   transition: color 0.15s, text-decoration-color 0.15s;
 }
-.md-body a:hover { color: #c4b5fd; text-decoration-color: #c4b5fd; }
+.md-body a:hover { color: var(--accent); text-decoration-color: var(--accent); }
 
 .md-body ul, .md-body ol {
   margin: 0.55em 0;
@@ -144,28 +300,28 @@ button:disabled { cursor: not-allowed; }
 .md-body ol { list-style: decimal; }
 .md-body li { margin: 0.25em 0; }
 .md-body li > p { margin: 0.2em 0; }
-.md-body li::marker { color: #8b5cf6; }
+.md-body li::marker { color: var(--accent); }
 .md-body ul ul, .md-body ol ol, .md-body ul ol, .md-body ol ul { margin: 0.2em 0; }
 
 .md-body input[type="checkbox"] {
   margin-right: 0.5em;
-  accent-color: #8b5cf6;
+  accent-color: var(--accent);
   transform: translateY(1px);
 }
 
 .md-body code {
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, "Courier New", monospace;
   font-size: 0.86em;
-  background: #262630;
-  color: #f3d5ff;
+  background: var(--surface-3);
+  color: var(--accent-soft);
   padding: 0.1em 0.4em;
   border-radius: 4px;
-  border: 1px solid #34343f;
+  border: 1px solid var(--border-strong);
 }
 
 .md-body pre {
-  background: #0f0f14;
-  border: 1px solid #2a2a33;
+  background: var(--surface-1);
+  border: 1px solid var(--border);
   border-radius: 8px;
   padding: 0.9em 1.1em;
   margin: 0.8em 0;
@@ -176,7 +332,7 @@ button:disabled { cursor: not-allowed; }
 }
 .md-body pre code {
   background: transparent;
-  color: #e5e7eb;
+  color: var(--foreground);
   padding: 0;
   border-radius: 0;
   border: none;
@@ -184,18 +340,18 @@ button:disabled { cursor: not-allowed; }
 }
 
 .md-body blockquote {
-  border-left: 3px solid #8b5cf6;
+  border-left: 3px solid var(--accent);
   padding: 0.3em 1em;
-  color: #c4b5fd;
+  color: var(--accent-soft);
   margin: 0.8em 0;
-  background: rgba(139, 92, 246, 0.06);
+  background: var(--accent-tint);
   border-radius: 0 6px 6px 0;
 }
 .md-body blockquote p { margin: 0.3em 0; }
 
 .md-body hr {
   border: 0;
-  border-top: 1px solid #2a2a2f;
+  border-top: 1px solid var(--border);
   margin: 1.4em 0;
 }
 
@@ -208,17 +364,17 @@ button:disabled { cursor: not-allowed; }
   overflow: hidden;
 }
 .md-body th, .md-body td {
-  border: 1px solid #2a2a2f;
+  border: 1px solid var(--border);
   padding: 0.5em 0.85em;
   text-align: left;
 }
 .md-body th {
-  background: #1e1e26;
+  background: var(--surface-3);
   font-weight: 600;
-  color: #ddd6fe;
+  color: var(--accent-soft);
   font-size: 0.82em;
   text-transform: uppercase;
   letter-spacing: 0.03em;
 }
-.md-body tr:nth-child(even) td { background: rgba(255, 255, 255, 0.015); }
-.md-body tbody tr:hover td { background: rgba(139, 92, 246, 0.04); }
+.md-body tr:nth-child(even) td { background: var(--accent-tint); }
+.md-body tbody tr:hover td { background: var(--accent-bg); }

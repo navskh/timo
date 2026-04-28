@@ -62,17 +62,17 @@ export function DirectoryPicker({ initialPath, onSelect, onClose }: Props) {
       >
         {/* Header: breadcrumb */}
         <div className="px-4 py-3 border-b border-[var(--border)]">
-          <div className="text-xs text-gray-400 mb-1">작업 디렉토리 선택</div>
+          <div className="text-xs text-[var(--fg-muted)] mb-1">작업 디렉토리 선택</div>
           <div className="flex items-center flex-wrap gap-1 text-xs mono">
             {pathSegments.map((seg, i) => (
               <span key={i} className="flex items-center gap-1">
                 <button
                   onClick={() => load(seg.path)}
-                  className="px-1.5 py-0.5 rounded hover:bg-violet-900/40 text-gray-300 hover:text-violet-200 transition"
+                  className="px-1.5 py-0.5 rounded hover:bg-[var(--accent-bg)] text-[var(--fg-muted)] hover:text-[var(--accent-soft)] transition"
                 >
                   {seg.label}
                 </button>
-                {i < pathSegments.length - 1 && <span className="text-gray-600">/</span>}
+                {i < pathSegments.length - 1 && <span className="text-[var(--fg-dim)]">/</span>}
               </span>
             ))}
           </div>
@@ -80,7 +80,7 @@ export function DirectoryPicker({ initialPath, onSelect, onClose }: Props) {
             <div className="mt-2 flex gap-2">
               <button
                 onClick={() => load(data.home)}
-                className="text-xs px-2 py-0.5 bg-black/40 hover:bg-violet-900/40 rounded mono"
+                className="text-xs px-2 py-0.5 bg-[var(--surface-2)] hover:bg-[var(--accent-bg)] rounded mono"
                 title={data.home}
               >
                 🏠 홈
@@ -88,7 +88,7 @@ export function DirectoryPicker({ initialPath, onSelect, onClose }: Props) {
               {data.parent && (
                 <button
                   onClick={() => load(data.parent)}
-                  className="text-xs px-2 py-0.5 bg-black/40 hover:bg-violet-900/40 rounded mono"
+                  className="text-xs px-2 py-0.5 bg-[var(--surface-2)] hover:bg-[var(--accent-bg)] rounded mono"
                 >
                   ↑ 상위
                 </button>
@@ -99,12 +99,12 @@ export function DirectoryPicker({ initialPath, onSelect, onClose }: Props) {
 
         {/* Entries */}
         <div className="flex-1 overflow-y-auto">
-          {loading && <div className="p-6 text-sm text-gray-500">로딩…</div>}
+          {loading && <div className="p-6 text-sm text-[var(--fg-dim)]">로딩…</div>}
           {error && <div className="p-6 text-sm text-red-400 mono">⚠ {error}</div>}
           {!loading && data && (
             <ul className="divide-y divide-[var(--border)]">
               {data.entries.filter((e) => e.isDir).length === 0 && (
-                <li className="p-6 text-sm text-gray-500 italic">하위 폴더 없음</li>
+                <li className="p-6 text-sm text-[var(--fg-dim)] italic">하위 폴더 없음</li>
               )}
               {data.entries
                 .filter((e) => e.isDir)
@@ -119,10 +119,10 @@ export function DirectoryPicker({ initialPath, onSelect, onClose }: Props) {
                         const next = joinPath(data.path, e.name);
                         load(next);
                       }}
-                      className="w-full flex items-center gap-2 px-4 py-2 hover:bg-violet-900/30 text-left text-sm transition"
+                      className="w-full flex items-center gap-2 px-4 py-2 hover:bg-[var(--accent-bg)] text-left text-sm transition"
                     >
                       <span>📁</span>
-                      <span className="mono text-gray-200">{e.name}</span>
+                      <span className="mono text-[var(--foreground)]">{e.name}</span>
                     </button>
                   </li>
                 ))}
@@ -142,27 +142,27 @@ export function DirectoryPicker({ initialPath, onSelect, onClose }: Props) {
                 }
               }}
               placeholder="경로 직접 입력 (Enter로 이동)"
-              className="flex-1 text-xs mono bg-black/40 border border-[var(--border)] rounded px-2 py-1 outline-none focus:border-violet-500"
+              className="flex-1 text-xs mono bg-[var(--surface-2)] border border-[var(--border)] rounded px-2 py-1 outline-none focus:border-[var(--accent)]"
             />
           </div>
         </div>
 
         {/* Footer */}
         <div className="px-4 py-3 border-t border-[var(--border)] flex items-center justify-between gap-3">
-          <div className="text-[11px] mono text-gray-500 truncate flex-1" title={data?.path}>
+          <div className="text-[11px] mono text-[var(--fg-dim)] truncate flex-1" title={data?.path}>
             {data?.path ?? ''}
           </div>
           <div className="flex gap-2 shrink-0">
             <button
               onClick={onClose}
-              className="px-3 py-1.5 text-sm rounded border border-[var(--border)] hover:bg-black/40"
+              className="px-3 py-1.5 text-sm rounded border border-[var(--border)] hover:bg-[var(--surface-3)]"
             >
               취소
             </button>
             <button
               disabled={!data}
               onClick={() => data && onSelect(data.path)}
-              className="px-3 py-1.5 text-sm rounded bg-violet-600 hover:bg-violet-500 disabled:opacity-40 font-medium"
+              className="px-3 py-1.5 text-sm rounded bg-[var(--accent)] hover:bg-[var(--accent-strong)] text-[var(--accent-on)] disabled:opacity-40 font-medium"
             >
               이 폴더 선택
             </button>

@@ -234,10 +234,10 @@ export function Composer({ running, onSend, onStop }: Props) {
                     applySkill(s);
                   }}
                   className={`w-full flex items-center gap-3 px-3 py-2 text-left transition ${
-                    i === menu.index ? 'bg-violet-600/30 text-white' : 'hover:bg-[var(--surface-3)]'
+                    i === menu.index ? 'bg-[var(--accent-bg)] text-white' : 'hover:bg-[var(--surface-3)]'
                   }`}
                 >
-                  <span className="mono text-[12px] text-violet-300 w-[80px]">{s.trigger}</span>
+                  <span className="mono text-[12px] text-[var(--accent-soft)] w-[80px]">{s.trigger}</span>
                   <span className="text-[12px] text-[var(--fg-muted)] truncate flex-1">
                     {s.description}
                   </span>
@@ -282,7 +282,7 @@ export function Composer({ running, onSend, onStop }: Props) {
 
       {/* Drag overlay */}
       {dragOver && (
-        <div className="absolute inset-0 z-10 border-2 border-dashed border-violet-400 rounded-lg bg-violet-950/40 flex items-center justify-center pointer-events-none text-sm text-violet-200">
+        <div className="absolute inset-0 z-10 border-2 border-dashed border-[var(--accent)] rounded-lg bg-[var(--accent-bg)] flex items-center justify-center pointer-events-none text-sm text-[var(--accent-soft)]">
           🖼 이미지 드롭해서 첨부
         </div>
       )}
@@ -291,7 +291,7 @@ export function Composer({ running, onSend, onStop }: Props) {
         <button
           type="button"
           onClick={() => fileInputRef.current?.click()}
-          className="h-[60px] w-[44px] flex items-center justify-center rounded-lg border border-[var(--border)] bg-[var(--surface-2)] hover:border-violet-500/50 hover:bg-[var(--surface-3)] disabled:opacity-40 transition text-lg"
+          className="h-[60px] w-[44px] flex items-center justify-center rounded-lg border border-[var(--border)] bg-[var(--surface-2)] hover:border-[var(--accent-border)] hover:bg-[var(--surface-3)] disabled:opacity-40 transition text-lg"
           title="이미지 첨부 (드래그·Ctrl+V도 가능)"
         >
           📎
@@ -320,7 +320,7 @@ export function Composer({ running, onSend, onStop }: Props) {
               : '무엇을 부탁할까요?  (Enter 전송 · Shift+Enter 줄바꿈 · / 스킬 · 이미지 드래그/붙여넣기)'
           }
           rows={2}
-          className="flex-1 bg-[var(--surface-2)] border border-[var(--border)] focus:border-violet-500 rounded-lg px-3.5 py-2.5 text-sm resize-none outline-none transition-colors"
+          className="flex-1 bg-[var(--surface-2)] border border-[var(--border)] focus:border-[var(--accent)] rounded-lg px-3.5 py-2.5 text-sm resize-none outline-none transition-colors"
           style={{ fontFamily: 'inherit' }}
         />
         {running ? (
@@ -337,7 +337,7 @@ export function Composer({ running, onSend, onStop }: Props) {
           <button
             onClick={submit}
             disabled={!canSend}
-            className="h-[60px] px-5 bg-violet-600 hover:bg-violet-500 disabled:opacity-40 disabled:cursor-not-allowed rounded-lg text-sm font-medium transition shrink-0"
+            className="h-[60px] px-5 bg-[var(--accent)] hover:bg-[var(--accent-strong)] text-[var(--accent-on)] disabled:opacity-40 disabled:cursor-not-allowed rounded-lg text-sm font-medium transition shrink-0"
           >
             {uploading > 0 ? '업로드' : '전송'}
           </button>

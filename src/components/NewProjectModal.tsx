@@ -83,7 +83,7 @@ export function NewProjectModal({ onClose, onCreated }: Props) {
               <button
                 type="button"
                 onClick={() => setPickingPath(true)}
-                className="shrink-0 px-3 py-2 text-sm rounded-md border border-[var(--border)] hover:bg-[var(--surface-3)] hover:border-violet-500/50 transition flex items-center gap-1"
+                className="shrink-0 px-3 py-2 text-sm rounded-md border border-[var(--border)] hover:bg-[var(--surface-3)] hover:border-[var(--accent-border)] transition flex items-center gap-1"
                 title="폴더 브라우저로 선택"
               >
                 📁 찾기
@@ -113,7 +113,7 @@ export function NewProjectModal({ onClose, onCreated }: Props) {
           <button
             type="submit"
             disabled={busy || !form.name.trim()}
-            className="px-4 py-1.5 text-sm rounded-md bg-violet-600 hover:bg-violet-500 disabled:opacity-40 font-medium"
+            className="px-4 py-1.5 text-sm rounded-md bg-[var(--accent)] hover:bg-[var(--accent-strong)] text-[var(--accent-on)] disabled:opacity-40 font-medium"
           >
             {busy ? '만드는 중…' : '만들기'}
           </button>

@@ -43,7 +43,7 @@ export default function Home() {
                 <li key={p.id}>
                   <Link
                     href={`/projects/${p.id}`}
-                    className="block p-4 rounded-lg border border-[var(--border)] bg-[var(--surface-2)] hover:bg-[var(--surface-3)] hover:border-violet-700/50 transition"
+                    className="block p-4 rounded-lg border border-[var(--border)] bg-[var(--surface-2)] hover:bg-[var(--surface-3)] hover:border-[var(--accent-border)] transition"
                   >
                     <div className="font-medium text-sm">{p.name}</div>
                     {p.description && (

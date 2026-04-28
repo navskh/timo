@@ -122,7 +122,7 @@ export default function SkillsPage() {
               setCreating(true);
               setSelectedName(null);
             }}
-            className="text-xs px-2 py-1 rounded bg-violet-600 hover:bg-violet-500"
+            className="text-xs px-2 py-1 rounded bg-[var(--accent)] hover:bg-[var(--accent-strong)] text-[var(--accent-on)]"
           >
             + 새 스킬
           </button>
@@ -154,12 +154,12 @@ export default function SkillsPage() {
                   }}
                   className={`w-full text-left px-3 py-2 rounded-md text-sm transition ${
                     isActive
-                      ? 'bg-[var(--accent-bg)] text-violet-200'
-                      : 'hover:bg-[var(--surface-3)] text-gray-200'
+                      ? 'bg-[var(--accent-bg)] text-[var(--accent-soft)]'
+                      : 'hover:bg-[var(--surface-3)] text-[var(--foreground)]'
                   }`}
                 >
                   <div className="flex items-center gap-2">
-                    <span className="mono text-[12px] text-violet-300">{s.trigger}</span>
+                    <span className="mono text-[12px] text-[var(--accent-soft)]">{s.trigger}</span>
                   </div>
                   <div className="text-[11px] text-[var(--fg-dim)] truncate mt-0.5">
                     {s.description || '(설명 없음)'}
@@ -198,7 +198,7 @@ export default function SkillsPage() {
                 <button
                   onClick={save}
                   disabled={!dirty || saving || !draft.name.trim() || !draft.trigger.startsWith('/')}
-                  className="text-xs px-3 py-1.5 rounded bg-violet-600 hover:bg-violet-500 disabled:opacity-40 font-medium"
+                  className="text-xs px-3 py-1.5 rounded bg-[var(--accent)] hover:bg-[var(--accent-strong)] text-[var(--accent-on)] disabled:opacity-40 font-medium"
                 >
                   {saving ? '저장 중…' : creating ? '만들기' : '저장'}
                 </button>

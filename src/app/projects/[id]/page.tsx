@@ -339,7 +339,7 @@ export default function ProjectChatPage({ params }: { params: Promise<{ id: stri
               <select
                 value={currentSession.model ?? ''}
                 onChange={(e) => setSessionModel(e.target.value || null)}
-                className="text-[11px] mono px-2 py-1 rounded-md border border-[var(--border)] bg-[var(--surface-2)] hover:border-violet-500/50 text-gray-200 outline-none cursor-pointer"
+                className="text-[11px] mono px-2 py-1 rounded-md border border-[var(--border)] bg-[var(--surface-2)] hover:border-[var(--accent-border)] text-[var(--foreground)] outline-none cursor-pointer"
                 title="이 대화에서 사용할 모델"
               >
                 <option value="">기본 (opus)</option>
@@ -352,7 +352,7 @@ export default function ProjectChatPage({ params }: { params: Promise<{ id: stri
               onClick={() => setPickingPath(true)}
               className={`flex items-center gap-1 text-[11px] mono px-2 py-1 rounded-md border transition max-w-[320px] ${
                 project.project_path
-                  ? 'text-[var(--fg-muted)] border-[var(--border)] hover:border-violet-500/50 hover:text-white'
+                  ? 'text-[var(--fg-muted)] border-[var(--border)] hover:border-[var(--accent-border)] hover:text-[var(--foreground)]'
                   : 'text-amber-400 border-amber-800/50 bg-amber-950/30 hover:bg-amber-950/50'
               }`}
               title="작업 디렉토리 변경"
@@ -386,8 +386,8 @@ export default function ProjectChatPage({ params }: { params: Promise<{ id: stri
         <div ref={scrollRef} className="flex-1 overflow-y-auto px-6 py-8 space-y-8">
           {messages.length === 0 && !streamingBlocks && (
             <div className="max-w-xl mx-auto text-center mt-16">
-              <div className="w-14 h-14 mx-auto mb-4 rounded-2xl bg-violet-600 flex items-center justify-center shadow-lg shadow-violet-950/50">
-                <span className="text-white text-xl font-bold">T</span>
+              <div className="w-14 h-14 mx-auto mb-4 rounded-2xl bg-[var(--accent)] flex items-center justify-center shadow-lg shadow-black/40">
+                <span className="text-[var(--accent-on)] text-xl font-bold">T</span>
               </div>
               <h2 className="text-lg font-semibold mb-1">{project.name}에서 시작해보세요</h2>
               <p className="text-sm text-[var(--fg-muted)] mb-6">
@@ -431,16 +431,16 @@ export default function ProjectChatPage({ params }: { params: Promise<{ id: stri
           {streamingBlocks && <ChatMessage role="assistant" blocks={streamingBlocks} streaming />}
           {!streamingBlocks && externalRunning && (
             <div className="flex gap-3 px-2 items-center text-[var(--fg-muted)]">
-              <div className="w-7 h-7 rounded-lg bg-violet-600 flex items-center justify-center shrink-0">
-                <span className="text-white text-[11px] font-bold">T</span>
+              <div className="w-7 h-7 rounded-lg bg-[var(--accent)] flex items-center justify-center shrink-0">
+                <span className="text-[var(--accent-on)] text-[11px] font-bold">T</span>
               </div>
               <div className="flex items-center gap-1.5 text-sm">
-                <span className="text-violet-300 font-medium">TIMO</span>
+                <span className="text-[var(--accent-soft)] font-medium">TIMO</span>
                 <span className="text-[var(--fg-dim)]">응답 중</span>
                 <span className="flex gap-0.5 ml-1">
-                  <span className="w-1.5 h-1.5 rounded-full bg-violet-400 animate-bounce" style={{ animationDelay: '0ms' }} />
-                  <span className="w-1.5 h-1.5 rounded-full bg-violet-400 animate-bounce" style={{ animationDelay: '120ms' }} />
-                  <span className="w-1.5 h-1.5 rounded-full bg-violet-400 animate-bounce" style={{ animationDelay: '240ms' }} />
+                  <span className="w-1.5 h-1.5 rounded-full bg-[var(--accent)] animate-bounce" style={{ animationDelay: '0ms' }} />
+                  <span className="w-1.5 h-1.5 rounded-full bg-[var(--accent)] animate-bounce" style={{ animationDelay: '120ms' }} />
+                  <span className="w-1.5 h-1.5 rounded-full bg-[var(--accent)] animate-bounce" style={{ animationDelay: '240ms' }} />
                 </span>
               </div>
             </div>

@@ -144,7 +144,7 @@ function ConfirmModal({ state }: { state: NonNullable<ConfirmState> }) {
         <div className="px-5 py-4 border-b border-[var(--border)]">
           <h2 className="text-base font-semibold">{state.title ?? '확인'}</h2>
         </div>
-        <div className="px-5 py-5 text-sm text-gray-100 leading-relaxed whitespace-pre-wrap">
+        <div className="px-5 py-5 text-sm text-[var(--foreground)] leading-relaxed whitespace-pre-wrap">
           {state.message}
         </div>
         <div className="px-5 py-3 border-t border-[var(--border)] flex justify-end gap-2">
@@ -157,10 +157,10 @@ function ConfirmModal({ state }: { state: NonNullable<ConfirmState> }) {
           <button
             autoFocus
             onClick={() => resolveConfirm(true)}
-            className={`px-4 py-1.5 text-sm rounded-md font-medium text-white ${
+            className={`px-4 py-1.5 text-sm rounded-md font-medium ${
               state.danger
-                ? 'bg-red-600 hover:bg-red-500'
-                : 'bg-violet-600 hover:bg-violet-500'
+                ? 'bg-red-600 hover:bg-red-500 text-white'
+                : 'bg-[var(--accent)] hover:bg-[var(--accent-strong)] text-[var(--accent-on)]'
             }`}
           >
             {state.confirmText ?? '확인'}
@@ -198,10 +198,10 @@ function ToastCard({ toast: t }: { toast: Toast }) {
       iconCls: 'text-red-300',
     },
     info: {
-      bar: 'bg-violet-500',
-      border: 'border-violet-700/60',
+      bar: 'bg-[var(--accent)]',
+      border: 'border-[var(--accent-border)]',
       icon: 'ℹ',
-      iconCls: 'text-violet-300',
+      iconCls: 'text-[var(--accent-soft)]',
     },
   }[t.kind];
   return (
@@ -213,13 +213,13 @@ function ToastCard({ toast: t }: { toast: Toast }) {
       <div className={`w-1 ${style.bar}`} />
       <div className="flex-1 px-3 py-2.5 flex items-start gap-2">
         <span className={`mt-0.5 text-sm ${style.iconCls}`}>{style.icon}</span>
-        <p className="flex-1 text-[13px] leading-relaxed text-gray-100 whitespace-pre-wrap">{t.message}</p>
+        <p className="flex-1 text-[13px] leading-relaxed text-[var(--foreground)] whitespace-pre-wrap">{t.message}</p>
         <button
           onClick={(e) => {
             e.stopPropagation();
             dismiss();
           }}
-          className="text-[var(--fg-dim)] hover:text-white text-xs shrink-0"
+          className="text-[var(--fg-dim)] hover:text-[var(--foreground)] text-xs shrink-0"
           aria-label="닫기"
         >
           ×

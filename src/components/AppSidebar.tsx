@@ -6,6 +6,7 @@ import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import type { IProject, IChatSession } from '@/types';
 import { NewProjectModal } from './NewProjectModal';
 import { ClaudeLimitsBar } from './ClaudeLimitsBar';
+import ThemePicker from './ThemePicker';
 import { confirm, toast } from './ui/dialogs';
 import pkg from '../../package.json';
 
@@ -166,20 +167,21 @@ export function AppSidebar() {
       <aside className="w-[260px] shrink-0 flex flex-col bg-[var(--surface-1)] border-r border-[var(--border)] h-screen">
         {/* Brand */}
         <div className="px-4 py-3 border-b border-[var(--border)] flex items-center gap-2">
-          <div className="w-7 h-7 rounded-lg bg-violet-600 flex items-center justify-center shadow-sm">
-            <span className="text-white text-[11px] font-bold">T</span>
+          <div className="w-7 h-7 rounded-lg bg-[var(--accent)] flex items-center justify-center shadow-sm">
+            <span className="text-[var(--accent-on)] text-[11px] font-bold">T</span>
           </div>
-          <Link href="/" className="text-sm font-semibold tracking-tight hover:text-violet-300 transition">
+          <Link href="/" className="text-sm font-semibold tracking-tight hover:text-[var(--accent-soft)] transition">
             TIMO
           </Link>
           <span className="ml-auto text-[10px] text-[var(--fg-dim)] mono">v{pkg.version}</span>
+          <ThemePicker />
         </div>
 
         {/* Action */}
         <div className="p-3">
           <button
             onClick={() => setShowNew(true)}
-            className="w-full flex items-center justify-center gap-1.5 px-3 py-2 rounded-md bg-violet-600 hover:bg-violet-500 text-sm font-medium transition"
+            className="w-full flex items-center justify-center gap-1.5 px-3 py-2 rounded-md bg-[var(--accent)] hover:bg-[var(--accent-strong)] text-[var(--accent-on)] text-sm font-medium transition"
           >
             <span className="text-base leading-none">+</span>
             <span>새 프로젝트</span>
@@ -207,7 +209,7 @@ export function AppSidebar() {
                   >
                     <button
                       onClick={() => toggle(p.id)}
-                      className="shrink-0 w-5 h-7 flex items-center justify-center text-[var(--fg-dim)] hover:text-white"
+                      className="shrink-0 w-5 h-7 flex items-center justify-center text-[var(--fg-dim)] hover:text-[var(--foreground)]"
                     >
                       <span className={`transition-transform inline-block ${isOpen ? 'rotate-90' : ''}`}>›</span>
                     </button>
@@ -216,7 +218,7 @@ export function AppSidebar() {
                       className="flex-1 min-w-0 py-1 pr-1 text-sm truncate"
                       title={p.name}
                     >
-                      <span className={isActive ? 'text-violet-200 font-medium' : 'text-gray-200'}>
+                      <span className={isActive ? 'text-[var(--accent-soft)] font-medium' : 'text-[var(--foreground)]'}>
                         {p.name}
                       </span>
                     </Link>
@@ -233,7 +235,7 @@ export function AppSidebar() {
                       <li>
                         <button
                           onClick={() => newSession(p.id)}
-                          className="w-full text-left pl-3 pr-2 py-1 text-[11px] text-[var(--fg-muted)] hover:text-violet-300 transition"
+                          className="w-full text-left pl-3 pr-2 py-1 text-[11px] text-[var(--fg-muted)] hover:text-[var(--accent-soft)] transition"
                         >
                           + 새 대화
                         </button>
@@ -251,7 +253,7 @@ export function AppSidebar() {
                             <div
                               className={`group/session flex items-center rounded-r transition relative ${
                                 isActiveSession
-                                  ? 'bg-[var(--accent-bg)] before:absolute before:left-[-1px] before:top-1 before:bottom-1 before:w-[2px] before:bg-violet-400 before:rounded-full'
+                                  ? 'bg-[var(--accent-bg)] before:absolute before:left-[-1px] before:top-1 before:bottom-1 before:w-[2px] before:bg-[var(--accent)] before:rounded-full'
                                   : 'hover:bg-[var(--surface-3)]'
                               }`}
                             >
@@ -259,14 +261,14 @@ export function AppSidebar() {
                                 href={`/projects/${p.id}?s=${s.id}`}
                                 className={`pl-3 pr-1 py-1 text-[12px] flex-1 min-w-0 flex items-center gap-1.5 ${
                                   isActiveSession
-                                    ? 'text-violet-100 font-medium'
-                                    : 'text-gray-400 group-hover/session:text-violet-200'
+                                    ? 'text-[var(--foreground)] font-medium'
+                                    : 'text-[var(--fg-muted)] group-hover/session:text-[var(--accent-soft)]'
                                 }`}
                                 title={isRunning ? `${s.title} — 응답 중` : s.title}
                               >
                                 {isRunning && (
                                   <span
-                                    className="shrink-0 w-1.5 h-1.5 rounded-full bg-violet-400 animate-pulse"
+                                    className="shrink-0 w-1.5 h-1.5 rounded-full bg-[var(--accent)] animate-pulse"
                                     aria-label="응답 중"
                                   />
                                 )}
@@ -304,7 +306,7 @@ export function AppSidebar() {
             </span>
             <Link
               href="/skills"
-              className="text-[10px] text-[var(--fg-dim)] hover:text-violet-300 transition"
+              className="text-[10px] text-[var(--fg-dim)] hover:text-[var(--accent-soft)] transition"
               title="스킬 관리"
             >
               관리
@@ -325,7 +327,7 @@ export function AppSidebar() {
                   className="w-full flex items-center gap-2 px-2 py-1 rounded hover:bg-[var(--surface-3)] text-left transition group"
                   title={s.description}
                 >
-                  <span className="mono text-[11px] text-violet-300">{s.trigger}</span>
+                  <span className="mono text-[11px] text-[var(--accent-soft)]">{s.trigger}</span>
                   <span className="text-[10px] text-[var(--fg-dim)] truncate flex-1 group-hover:text-[var(--fg-muted)]">
                     {s.description}
                   </span>

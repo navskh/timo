@@ -73,7 +73,7 @@ export function TaskSidebar({ tasks, onDelete, onAdd, onToggleStatus, onReorderP
                 type="button"
                 onClick={() => onTidy()}
                 disabled={tidyDisabled}
-                className="text-[11px] px-2 py-1 rounded border border-[var(--border)] hover:border-violet-500/60 hover:bg-[var(--surface-3)] transition text-[var(--fg-muted)] hover:text-violet-200 disabled:opacity-40 disabled:cursor-not-allowed"
+                className="text-[11px] px-2 py-1 rounded border border-[var(--border)] hover:border-[var(--accent-border)] hover:bg-[var(--surface-3)] transition text-[var(--fg-muted)] hover:text-[var(--accent-soft)] disabled:opacity-40 disabled:cursor-not-allowed"
                 title="AI가 활성 태스크를 검토하고 정리합니다 (완료된 항목은 제외)"
               >
                 ✨ 정리
@@ -94,12 +94,12 @@ export function TaskSidebar({ tasks, onDelete, onAdd, onToggleStatus, onReorderP
               onChange={(e) => setNewTitle(e.target.value)}
               placeholder="+ 직접 추가…"
               disabled={busy}
-              className="flex-1 bg-[var(--surface-2)] border border-[var(--border)] focus:border-violet-500 rounded px-2 py-1 text-[12px] outline-none disabled:opacity-50"
+              className="flex-1 bg-[var(--surface-2)] border border-[var(--border)] focus:border-[var(--accent)] rounded px-2 py-1 text-[12px] outline-none disabled:opacity-50"
             />
             <button
               type="submit"
               disabled={busy || !newTitle.trim()}
-              className="px-2 py-1 text-[12px] bg-violet-600 hover:bg-violet-500 disabled:opacity-40 rounded"
+              className="px-2 py-1 text-[12px] bg-[var(--accent)] hover:bg-[var(--accent-strong)] text-[var(--accent-on)] disabled:opacity-40 rounded"
             >
               +
             </button>
@@ -108,17 +108,17 @@ export function TaskSidebar({ tasks, onDelete, onAdd, onToggleStatus, onReorderP
       )}
       <div className="flex-1 overflow-y-auto p-2 space-y-3">
         {tasks.length === 0 && (
-          <p className="text-xs text-gray-500 italic px-2 py-4">
+          <p className="text-xs text-[var(--fg-dim)] italic px-2 py-4">
             아직 없어요. 대화를 시작하면 AI가 TodoWrite로 태스크를 만들면서 여기 나타나요.
           </p>
         )}
         {groups.running.length > 0 && (
-          <Group label="● 진행 중" color="text-violet-300" tasks={groups.running} onDelete={onDelete} onToggleStatus={onToggleStatus} />
+          <Group label="● 진행 중" color="text-[var(--accent-soft)]" tasks={groups.running} onDelete={onDelete} onToggleStatus={onToggleStatus} />
         )}
         {groups.pending.length > 0 && (
           <Group
             label="• 대기"
-            color="text-gray-300"
+            color="text-[var(--fg-muted)]"
             tasks={groups.pending}
             onDelete={onDelete}
             onToggleStatus={onToggleStatus}
@@ -212,12 +212,12 @@ function Group({
               onDragEnd={draggable ? handleDragEnd : undefined}
               className={`group px-2 py-1.5 rounded text-xs flex items-start gap-2 transition relative ${
                 t.status === 'running'
-                  ? 'bg-violet-950/40 border border-violet-700/50 animate-pulse'
+                  ? 'bg-[var(--accent-bg)] border border-[var(--accent-border)] animate-pulse'
                   : t.status === 'done'
                   ? 'text-[var(--fg-dim)] line-through'
                   : 'hover:bg-[var(--surface-3)]'
               } ${isDragging ? 'opacity-30 scale-[0.98]' : ''} ${
-                isOver ? 'before:absolute before:left-0 before:right-0 before:-top-1 before:h-0.5 before:bg-violet-400 before:rounded-full before:shadow-[0_0_8px_rgba(167,139,250,0.6)]' : ''
+                isOver ? 'before:absolute before:left-0 before:right-0 before:-top-1 before:h-0.5 before:bg-[var(--accent)] before:rounded-full before:shadow-[0_0_8px_rgba(167,139,250,0.6)]' : ''
               } ${draggable ? 'cursor-grab active:cursor-grabbing' : ''}`}
             >
               {draggable && (
@@ -243,8 +243,8 @@ function Group({
                     : t.status === 'failed'
                     ? 'bg-red-600/60 border-red-500 text-white text-[10px] leading-none'
                     : t.status === 'running'
-                    ? 'border-violet-400 bg-violet-800/40'
-                    : 'border-[var(--border-strong)] hover:border-violet-400'
+                    ? 'border-[var(--accent)] bg-[var(--accent-bg)]'
+                    : 'border-[var(--border-strong)] hover:border-[var(--accent)]'
                 } disabled:cursor-default`}
               >
                 {t.status === 'done' ? '✓' : t.status === 'failed' ? '✗' : ''}
@@ -278,10 +278,10 @@ function TidyProgress({ elapsed, taskCount }: { elapsed: number; taskCount: numb
   const overshooting = elapsed > estimated;
   return (
     <span
-      className="text-[11px] mono text-violet-200 flex items-center gap-1.5 px-2 py-1 rounded border border-violet-500/40 bg-violet-500/10"
+      className="text-[11px] mono text-[var(--accent-soft)] flex items-center gap-1.5 px-2 py-1 rounded border border-[var(--accent-border)] bg-[var(--accent-bg)]"
       title={`AI가 활성 태스크 ${taskCount}개를 검토 중. 보통 ${estimated}초 안에 끝나요.`}
     >
-      <span className="inline-block w-2 h-2 bg-violet-400 rounded-full animate-pulse" />
+      <span className="inline-block w-2 h-2 bg-[var(--accent)] rounded-full animate-pulse" />
       {overshooting ? `${fmtTime(elapsed)} 조금만 더…` : `${fmtTime(elapsed)} / ~${fmtTime(estimated)}`}
     </span>
   );

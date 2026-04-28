@@ -25,14 +25,14 @@ export function ExecutionPanel({ blocks, status, title }: Props) {
   }, [blocks]);
 
   return (
-    <div className="border border-[var(--border)] rounded-md bg-black/40 flex flex-col max-h-[70vh]">
+    <div className="border border-[var(--border)] rounded-md bg-[var(--surface-2)] flex flex-col max-h-[70vh]">
       <div className="px-3 py-2 border-b border-[var(--border)] flex items-center justify-between text-sm">
         <span className="font-medium">{title ?? '실행 로그'}</span>
         <StatusPill status={status} />
       </div>
       <div ref={scrollRef} className="flex-1 overflow-y-auto p-3 space-y-2 text-sm">
         {blocks.length === 0 ? (
-          <p className="text-gray-500 italic">
+          <p className="text-[var(--fg-dim)] italic">
             {status === 'running' ? '시작 중…' : '아직 실행 기록이 없어요.'}
           </p>
         ) : (
@@ -45,8 +45,8 @@ export function ExecutionPanel({ blocks, status, title }: Props) {
 
 function StatusPill({ status }: { status: Props['status'] }) {
   const map = {
-    idle: { label: 'idle', cls: 'bg-gray-700 text-gray-300' },
-    running: { label: '● 실행 중', cls: 'bg-violet-600/40 text-violet-200 animate-pulse' },
+    idle: { label: 'idle', cls: 'bg-[var(--surface-3)] text-[var(--fg-muted)]' },
+    running: { label: '● 실행 중', cls: 'bg-[var(--accent-bg)] text-[var(--accent-soft)] animate-pulse' },
     done: { label: '✓ 완료', cls: 'bg-green-600/40 text-green-200' },
     error: { label: '✗ 실패', cls: 'bg-red-600/40 text-red-200' },
     cancelled: { label: '중단', cls: 'bg-yellow-600/40 text-yellow-200' },
@@ -61,10 +61,10 @@ function BlockView({ block }: { block: StreamBlock }) {
   if (block.kind === 'tool_use') {
     return (
       <details className="border border-[var(--border)] rounded bg-[var(--muted)]/60 overflow-hidden">
-        <summary className="px-2 py-1 text-xs cursor-pointer mono text-violet-300 select-none">
+        <summary className="px-2 py-1 text-xs cursor-pointer mono text-[var(--accent-soft)] select-none">
           🔧 {block.name}
         </summary>
-        <pre className="px-2 py-1 text-xs mono text-gray-300 overflow-x-auto border-t border-[var(--border)]">
+        <pre className="px-2 py-1 text-xs mono text-[var(--fg-muted)] overflow-x-auto border-t border-[var(--border)]">
           {JSON.stringify(block.input, null, 2)}
         </pre>
       </details>
@@ -73,17 +73,17 @@ function BlockView({ block }: { block: StreamBlock }) {
   if (block.kind === 'tool_result') {
     return (
       <details className={`border rounded overflow-hidden ${block.isError ? 'border-red-600/60 bg-red-950/30' : 'border-[var(--border)] bg-[var(--muted)]/40'}`}>
-        <summary className="px-2 py-1 text-xs cursor-pointer mono text-gray-400 select-none">
+        <summary className="px-2 py-1 text-xs cursor-pointer mono text-[var(--fg-muted)] select-none">
           {block.isError ? '⚠️ tool result (error)' : '↩ tool result'}
         </summary>
-        <pre className="px-2 py-1 text-xs mono whitespace-pre-wrap text-gray-300 border-t border-[var(--border)]">
+        <pre className="px-2 py-1 text-xs mono whitespace-pre-wrap text-[var(--fg-muted)] border-t border-[var(--border)]">
           {block.content}
         </pre>
       </details>
     );
   }
   if (block.kind === 'system') {
-    return <div className="text-xs italic text-gray-500">{block.content}</div>;
+    return <div className="text-xs italic text-[var(--fg-dim)]">{block.content}</div>;
   }
   if (block.kind === 'error') {
     return <div className="text-xs text-red-400 mono">{block.content}</div>;

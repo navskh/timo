@@ -30,7 +30,7 @@ export function ChatMessage({ role, blocks, streaming, suggestions, suggestionsL
                   href={img.url}
                   target="_blank"
                   rel="noreferrer"
-                  className="block border border-violet-700/50 rounded-lg overflow-hidden hover:border-violet-400 transition"
+                  className="block border border-[var(--accent-border)] rounded-lg overflow-hidden hover:border-[var(--accent)] transition"
                   title={img.name ?? '이미지'}
                 >
                   {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -40,7 +40,7 @@ export function ChatMessage({ role, blocks, streaming, suggestions, suggestionsL
             </div>
           )}
           {text && (
-            <div className="bg-violet-600 text-white px-3.5 py-2 rounded-2xl rounded-tr-md text-[14px] leading-relaxed whitespace-pre-wrap shadow-sm">
+            <div className="bg-[var(--accent)] text-[var(--accent-on)] px-3.5 py-2 rounded-2xl rounded-tr-md text-[14px] leading-relaxed whitespace-pre-wrap shadow-sm">
               {text}
             </div>
           )}
@@ -57,11 +57,11 @@ export function ChatMessage({ role, blocks, streaming, suggestions, suggestionsL
     <div className="flex gap-3 px-2">
       <AssistantAvatar />
       <div className="flex-1 min-w-0 space-y-3 pb-2">
-        <div className="text-xs font-semibold text-violet-300">TIMO</div>
+        <div className="text-xs font-semibold text-[var(--accent-soft)]">TIMO</div>
         {clusters.map((cluster, i) => (
           <ClusterRenderer key={i} cluster={cluster} />
         ))}
-        {streaming && <div className="text-xs text-violet-400 animate-pulse">● 생각 중…</div>}
+        {streaming && <div className="text-xs text-[var(--accent)] animate-pulse">● 생각 중…</div>}
         {!streaming && (suggestions?.length || suggestionsLoading) && (
           <Suggestions suggestions={suggestions ?? []} loading={suggestionsLoading} />
         )}
@@ -89,13 +89,13 @@ function Suggestions({ suggestions, loading }: { suggestions: string[]; loading?
               new CustomEvent('timo:fill-composer', { detail: { text: s } }),
             );
           }}
-          className="group/chip flex items-start gap-2 max-w-full text-left px-3 py-1.5 rounded-lg border border-[var(--border)] bg-[var(--surface-2)] hover:border-violet-500/60 hover:bg-[var(--surface-3)] transition text-[12px]"
+          className="group/chip flex items-start gap-2 max-w-full text-left px-3 py-1.5 rounded-lg border border-[var(--border)] bg-[var(--surface-2)] hover:border-[var(--accent-border)] hover:bg-[var(--surface-3)] transition text-[12px]"
           title="클릭해서 입력창에 채우기"
         >
-          <span className="text-[10px] text-[var(--fg-dim)] mono shrink-0 pt-0.5 group-hover/chip:text-violet-300">
+          <span className="text-[10px] text-[var(--fg-dim)] mono shrink-0 pt-0.5 group-hover/chip:text-[var(--accent-soft)]">
             {labels[i] ?? '·'}
           </span>
-          <span className="text-gray-200 group-hover/chip:text-white leading-relaxed">
+          <span className="text-[var(--foreground)] group-hover/chip:text-[var(--accent-soft)] leading-relaxed">
             {s}
           </span>
         </button>
@@ -106,8 +106,8 @@ function Suggestions({ suggestions, loading }: { suggestions: string[]; loading?
 
 function AssistantAvatar() {
   return (
-    <div className="w-7 h-7 rounded-lg bg-violet-600 flex items-center justify-center shrink-0 shadow-sm">
-      <span className="text-white text-[11px] font-bold tracking-tight">T</span>
+    <div className="w-7 h-7 rounded-lg bg-[var(--accent)] flex items-center justify-center shrink-0 shadow-sm">
+      <span className="text-[var(--accent-on)] text-[11px] font-bold tracking-tight">T</span>
     </div>
   );
 }
@@ -141,7 +141,7 @@ function buildClusters(blocks: ChatBlock[]): Cluster[] {
 function ClusterRenderer({ cluster }: { cluster: Cluster }) {
   if (cluster.kind === 'text') {
     return (
-      <div className="md-body text-[15px] text-gray-100 leading-[1.75] max-w-[740px]">
+      <div className="md-body text-[15px] text-[var(--foreground)] leading-[1.75] max-w-[740px]">
         <ReactMarkdown remarkPlugins={[remarkGfm]}>{cluster.block.content}</ReactMarkdown>
       </div>
     );
@@ -152,7 +152,7 @@ function ClusterRenderer({ cluster }: { cluster: Cluster }) {
         href={cluster.block.url}
         target="_blank"
         rel="noreferrer"
-        className="inline-block border border-[var(--border)] rounded-lg overflow-hidden hover:border-violet-500 transition"
+        className="inline-block border border-[var(--border)] rounded-lg overflow-hidden hover:border-[var(--accent)] transition"
       >
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
@@ -171,7 +171,7 @@ function ClusterRenderer({ cluster }: { cluster: Cluster }) {
         </div>
       );
     }
-    return <div className="text-[11px] italic text-gray-500">{cluster.block.content}</div>;
+    return <div className="text-[11px] italic text-[var(--fg-dim)]">{cluster.block.content}</div>;
   }
   // Tools cluster: pair tool_use with its matching tool_result.
   return <ToolCluster blocks={cluster.blocks} />;
@@ -234,16 +234,16 @@ function ToolPair({
         ? 'border-red-700/60'
         : isTodo
         ? 'border-amber-700/40'
-        : 'border-[var(--border)] hover:border-violet-700/40'
+        : 'border-[var(--border)] hover:border-[var(--accent-border)]'
     }`}>
       <summary className="cursor-pointer select-none flex items-center gap-2 px-2.5 py-1.5 text-[12px] leading-none">
-        <span className="text-gray-400 group-open:rotate-90 transition-transform inline-block w-2">›</span>
+        <span className="text-[var(--fg-muted)] group-open:rotate-90 transition-transform inline-block w-2">›</span>
         <span className="text-base leading-none">{icon}</span>
-        <span className={`mono font-medium ${isTodo ? 'text-amber-300' : 'text-violet-200'}`}>
+        <span className={`mono font-medium ${isTodo ? 'text-amber-300' : 'text-[var(--accent-soft)]'}`}>
           {use.name}
         </span>
         {preview && (
-          <span className="mono text-gray-400 truncate min-w-0 flex-1" title={preview}>
+          <span className="mono text-[var(--fg-muted)] truncate min-w-0 flex-1" title={preview}>
             {preview}
           </span>
         )}
@@ -253,21 +253,21 @@ function ToolPair({
           </span>
         )}
       </summary>
-      <div className="border-t border-[var(--border)] px-3 py-2 space-y-2 bg-black/30">
+      <div className="border-t border-[var(--border)] px-3 py-2 space-y-2 bg-[var(--surface-1)]">
         {/* input */}
         <div>
-          <div className="text-[10px] text-gray-500 mono mb-1 uppercase tracking-wider">input</div>
-          <pre className="mono text-[11.5px] text-gray-300 whitespace-pre-wrap break-words max-h-64 overflow-y-auto scrollbar-slim">
+          <div className="text-[10px] text-[var(--fg-dim)] mono mb-1 uppercase tracking-wider">input</div>
+          <pre className="mono text-[11.5px] text-[var(--fg-muted)] whitespace-pre-wrap break-words max-h-64 overflow-y-auto scrollbar-slim">
             {typeof use.input === 'string' ? use.input : JSON.stringify(use.input, null, 2)}
           </pre>
         </div>
         {/* result */}
         {result && (
           <div>
-            <div className={`text-[10px] mono mb-1 uppercase tracking-wider ${isError ? 'text-red-400' : 'text-gray-500'}`}>
+            <div className={`text-[10px] mono mb-1 uppercase tracking-wider ${isError ? 'text-red-400' : 'text-[var(--fg-dim)]'}`}>
               {isError ? 'error' : 'result'}
             </div>
-            <pre className="mono text-[11.5px] text-gray-300 whitespace-pre-wrap break-words max-h-72 overflow-y-auto scrollbar-slim">
+            <pre className="mono text-[11.5px] text-[var(--fg-muted)] whitespace-pre-wrap break-words max-h-72 overflow-y-auto scrollbar-slim">
               {result.content}
             </pre>
           </div>
@@ -282,11 +282,11 @@ function ToolResultPill({ result }: { result: Extract<ChatBlock, { kind: 'tool_r
     <details className={`rounded-md border bg-[var(--muted)]/30 ${
       result.isError ? 'border-red-700/60' : 'border-[var(--border)]'
     }`}>
-      <summary className="cursor-pointer px-2.5 py-1.5 text-[12px] text-gray-400 select-none flex items-center gap-2">
+      <summary className="cursor-pointer px-2.5 py-1.5 text-[12px] text-[var(--fg-muted)] select-none flex items-center gap-2">
         <span className="text-base">↩</span>
         <span className="mono">tool result {result.isError ? '(error)' : ''}</span>
       </summary>
-      <pre className="mono text-[11.5px] text-gray-300 whitespace-pre-wrap break-words max-h-64 overflow-y-auto scrollbar-slim border-t border-[var(--border)] px-3 py-2 bg-black/30">
+      <pre className="mono text-[11.5px] text-[var(--fg-muted)] whitespace-pre-wrap break-words max-h-64 overflow-y-auto scrollbar-slim border-t border-[var(--border)] px-3 py-2 bg-[var(--surface-1)]">
         {result.content}
       </pre>
     </details>

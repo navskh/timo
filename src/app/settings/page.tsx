@@ -130,7 +130,7 @@ export default function SettingsPage() {
           <button
             onClick={tryChrome}
             disabled={busy}
-            className="px-4 py-2 text-sm rounded bg-violet-600 hover:bg-violet-500 disabled:opacity-40 font-medium"
+            className="px-4 py-2 text-sm rounded bg-[var(--accent)] hover:bg-[var(--accent-strong)] text-[var(--accent-on)] disabled:opacity-40 font-medium"
           >
             {busy ? '시도 중…' : 'Chrome에서 자동 연결'}
           </button>
@@ -163,7 +163,7 @@ export default function SettingsPage() {
             <button
               type="submit"
               disabled={busy || !sessionKey.trim() || !orgId.trim()}
-              className="px-4 py-2 text-sm rounded bg-violet-600 hover:bg-violet-500 disabled:opacity-40 font-medium"
+              className="px-4 py-2 text-sm rounded bg-[var(--accent)] hover:bg-[var(--accent-strong)] text-[var(--accent-on)] disabled:opacity-40 font-medium"
             >
               {busy ? '확인 중…' : '저장 및 연결'}
             </button>
