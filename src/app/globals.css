@@ -45,9 +45,10 @@ button:disabled { cursor: not-allowed; }
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, "Courier New", monospace;
 }
 
-/* Scrollbar styling — subtle by default, violet on hover. Applies app-wide. */
+/* Scrollbar styling — subtle by default, violet on hover. Applies app-wide.
+   Note: do NOT set `scrollbar-width: thin` — modern Chromium/WebKit treats it
+   as the standard property and ignores the ::-webkit-scrollbar width below. */
 * {
-  scrollbar-width: thin;
   scrollbar-color: #4a4a55 transparent;
 }
 *:hover {
@@ -69,7 +70,6 @@ button:disabled { cursor: not-allowed; }
   transition: background 0.18s ease;
   min-height: 40px;
 }
-*:hover > ::-webkit-scrollbar-thumb,
 *::-webkit-scrollbar-thumb:hover {
   background: #6d5aa3;
   background-clip: padding-box;
