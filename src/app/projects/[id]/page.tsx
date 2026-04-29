@@ -358,31 +358,31 @@ export default function ProjectChatPage({ params }: { params: Promise<{ id: stri
     }
   }
 
+  // All tab navigation goes through the URL — that's the same pathway sidebar
+  // clicks use, so currentSessionId / openTabs / messages all stay in sync via
+  // the existing queryStringSession + auto-pin effects.
   function switchTab(sid: string) {
     if (sid === currentSessionId) return;
-    setCurrentSessionId(sid);
+    router.push(`/projects/${id}?s=${sid}`);
   }
 
   function closeTab(sid: string) {
-    setOpenTabs((prev) => {
-      const idx = prev.indexOf(sid);
-      if (idx === -1) return prev;
-      const next = [...prev.slice(0, idx), ...prev.slice(idx + 1)];
-      // If we just closed the active tab, jump to the neighbor (right, then left).
-      if (sid === currentSessionId && next.length > 0) {
-        const target = next[idx] ?? next[idx - 1] ?? next[0];
-        setCurrentSessionId(target);
-      }
-      return next;
-    });
+    const idx = openTabs.indexOf(sid);
+    if (idx === -1) return;
+    const next = [...openTabs.slice(0, idx), ...openTabs.slice(idx + 1)];
+    setOpenTabs(next);
+    // If we just closed the active tab, jump to the neighbor (right, then left).
+    if (sid === currentSessionId && next.length > 0) {
+      const target = next[idx] ?? next[idx - 1] ?? next[0];
+      router.push(`/projects/${id}?s=${target}`);
+    }
   }
 
   async function newSessionTab() {
     const r = await fetch(`/api/projects/${id}/sessions`, { method: 'POST' }).then((r) => r.json());
     if (!r?.session?.id) return;
     await loadSessions();
-    setOpenTabs((prev) => (prev.includes(r.session.id) ? prev : [...prev, r.session.id]));
-    setCurrentSessionId(r.session.id);
+    router.push(`/projects/${id}?s=${r.session.id}`);
     window.dispatchEvent(new Event('timo:refresh-sidebar'));
   }
 
@@ -485,53 +485,63 @@ export default function ProjectChatPage({ params }: { params: Promise<{ id: stri
           </div>
         </header>
 
-        {/* Tab strip */}
+        {/* Tab strip — Chrome-style: strip is darker than the chat area, the
+            active tab is bg-matched to the chat area so it visually "drops
+            into" the content; an accent stripe on top reinforces selection. */}
         {openTabs.length > 0 && (
-          <div className="border-b border-[var(--border)] bg-[var(--surface-1)] flex items-stretch overflow-x-auto scrollbar-slim">
-            {openTabs.map((sid) => {
-              const session = sessions.find((s) => s.id === sid);
-              if (!session) return null;
-              const active = sid === currentSessionId;
-              const isRunning = runningSessionIds.has(sid);
-              return (
-                <div
-                  key={sid}
-                  className={`group/tab relative flex items-center gap-2 px-3 py-2 max-w-[220px] min-w-[120px] border-r border-[var(--border)] cursor-pointer transition ${
-                    active
-                      ? 'bg-[var(--bg)] text-[var(--foreground)]'
-                      : 'text-[var(--fg-muted)] hover:bg-[var(--surface-2)] hover:text-[var(--foreground)]'
-                  }`}
-                  onClick={() => switchTab(sid)}
-                  role="tab"
-                  aria-selected={active}
-                  title={session.title}
-                >
-                  {active && (
-                    <span className="absolute top-0 left-0 right-0 h-0.5 bg-[var(--accent)]" aria-hidden />
-                  )}
-                  {isRunning && (
-                    <span
-                      className="shrink-0 w-1.5 h-1.5 rounded-full bg-[var(--accent)] animate-pulse"
-                      aria-label="응답 중"
-                    />
-                  )}
-                  <span className="truncate text-xs flex-1">{session.title}</span>
-                  <button
-                    type="button"
-                    onClick={(e) => { e.stopPropagation(); closeTab(sid); }}
-                    className="shrink-0 w-4 h-4 rounded text-[var(--fg-dim)] hover:text-red-400 hover:bg-[var(--surface-3)] flex items-center justify-center text-xs opacity-0 group-hover/tab:opacity-100 focus:opacity-100"
-                    title="탭 닫기 (대화는 유지됨)"
-                    aria-label="탭 닫기"
+          <div className="border-b border-[var(--border)] bg-[var(--surface-2)] flex items-stretch relative">
+            <div className="flex items-stretch overflow-x-auto scrollbar-slim flex-1 min-w-0">
+              {openTabs.map((sid) => {
+                const session = sessions.find((s) => s.id === sid);
+                if (!session) return null;
+                const active = sid === currentSessionId;
+                const isRunning = runningSessionIds.has(sid);
+                return (
+                  <div
+                    key={sid}
+                    className={`group/tab relative flex items-center gap-2 px-3.5 py-2.5 max-w-[220px] min-w-[140px] cursor-pointer transition border-r border-[var(--border)] ${
+                      active
+                        ? 'bg-[var(--bg)] text-[var(--foreground)] font-medium'
+                        : 'text-[var(--fg-muted)] hover:bg-[var(--surface-3)] hover:text-[var(--foreground)]'
+                    }`}
+                    onClick={() => switchTab(sid)}
+                    role="tab"
+                    aria-selected={active}
+                    title={session.title}
                   >
-                    ×
-                  </button>
-                </div>
-              );
-            })}
+                    {active && (
+                      <span
+                        className="absolute top-0 left-0 right-0 h-[3px] bg-[var(--accent)]"
+                        aria-hidden
+                      />
+                    )}
+                    {isRunning && (
+                      <span
+                        className="shrink-0 w-1.5 h-1.5 rounded-full bg-[var(--accent)] animate-pulse"
+                        aria-label="응답 중"
+                      />
+                    )}
+                    <span className="truncate text-xs flex-1">{session.title}</span>
+                    <button
+                      type="button"
+                      onClick={(e) => { e.stopPropagation(); closeTab(sid); }}
+                      className={`shrink-0 w-4 h-4 rounded text-[var(--fg-dim)] hover:text-red-400 hover:bg-[var(--surface-4)] flex items-center justify-center text-xs transition ${
+                        active ? 'opacity-60 hover:opacity-100' : 'opacity-0 group-hover/tab:opacity-100 focus:opacity-100'
+                      }`}
+                      title="탭 닫기 (대화는 유지됨)"
+                      aria-label="탭 닫기"
+                    >
+                      ×
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+            {/* Sticky + button so it stays clickable even when many tabs scroll. */}
             <button
               type="button"
               onClick={newSessionTab}
-              className="shrink-0 w-9 flex items-center justify-center text-[var(--fg-dim)] hover:text-[var(--accent)] hover:bg-[var(--surface-2)] transition"
+              className="shrink-0 w-10 flex items-center justify-center text-base text-[var(--fg-dim)] hover:text-[var(--accent)] hover:bg-[var(--surface-3)] transition border-l border-[var(--border)]"
               title="새 대화"
               aria-label="새 대화"
             >
