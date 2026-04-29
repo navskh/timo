@@ -27,8 +27,17 @@ export default function ProjectChatPage({ params }: { params: Promise<{ id: stri
   const [suggestionsLoading, setSuggestionsLoading] = useState(false);
   const [tidying, setTidying] = useState(false);
 
-  const { events, running, start } = useSSEStream();
+  const { events, running, start, reset } = useSSEStream();
   const scrollRef = useRef<HTMLDivElement>(null);
+
+  // Open tabs (per-project, localStorage-persisted). Tabs are an ordered list
+  // of session IDs the user is actively juggling — clicking a session in the
+  // sidebar pins it as a tab; closing a tab doesn't delete the session.
+  const tabsKey = `timo-tabs-${id}`;
+  const [openTabs, setOpenTabs] = useState<string[]>([]);
+  // Set of session IDs currently producing an assistant turn on the server,
+  // used by the tab strip to render a running dot on each tab.
+  const [runningSessionIds, setRunningSessionIds] = useState<Set<string>>(new Set());
 
   const loadProject = useCallback(async () => {
     const r = await fetch(`/api/projects/${id}`).then((r) => r.json());
@@ -78,33 +87,46 @@ export default function ProjectChatPage({ params }: { params: Promise<{ id: stri
     }
   }, [queryStringSession, currentSessionId]);
 
-  // Load messages when current session changes.
+  // Load messages when current session changes. Also abort any in-flight SSE
+  // from the previous session and drop its event log — otherwise the previous
+  // session's deltas would keep landing in this session's view (cross-session
+  // leak) and `streamingBlocks` would briefly mix the two.
   useEffect(() => {
     if (!currentSessionId) return;
+    reset();
     loadMessages(currentSessionId);
     setStreamingBlocks(null);
-  }, [currentSessionId, loadMessages]);
+  }, [currentSessionId, loadMessages, reset]);
 
-  // Poll whether THIS session is still producing a turn on the server (e.g.,
-  // user navigated away mid-stream and came back). Also listen for completion.
+  // Poll all running sessions every 2s. Drives both the tab-strip indicators
+  // (any tab can show a running dot) and the externalRunning flag for the
+  // current session (so reattach UI kicks in).
   useEffect(() => {
-    if (!currentSessionId) { setExternalRunning(false); return; }
     let stopped = false;
     const poll = async () => {
       try {
         const r = await fetch('/api/sessions/status').then((r) => r.json());
         if (stopped) return;
         const ids: string[] = (r.running ?? []).map((x: { session_id: string }) => x.session_id);
-        setExternalRunning(ids.includes(currentSessionId));
+        setRunningSessionIds(new Set(ids));
+        setExternalRunning(currentSessionId ? ids.includes(currentSessionId) : false);
       } catch { /* ignore */ }
     };
     poll();
-    const id = setInterval(poll, 2000);
+    const intId = setInterval(poll, 2000);
 
     const onFinished = (e: Event) => {
       const detail = (e as CustomEvent<{ session_id: string }>).detail;
-      if (detail?.session_id === currentSessionId) {
+      if (!detail?.session_id) return;
+      setRunningSessionIds((prev) => {
+        if (!prev.has(detail.session_id)) return prev;
+        const next = new Set(prev);
+        next.delete(detail.session_id);
+        return next;
+      });
+      if (detail.session_id === currentSessionId) {
         setExternalRunning(false);
+        setStreamingBlocks(null);
         loadMessages(currentSessionId);
       }
     };
@@ -112,10 +134,32 @@ export default function ProjectChatPage({ params }: { params: Promise<{ id: stri
 
     return () => {
       stopped = true;
-      clearInterval(id);
+      clearInterval(intId);
       window.removeEventListener('timo:session-finished', onFinished);
     };
   }, [currentSessionId, loadMessages]);
+
+  // Reattach: while another tab/window is producing the assistant turn for
+  // THIS session, poll the server's mid-stream block buffer so the user sees
+  // progress instead of a static spinner. Skips when we're the producer
+  // (running=true means the local SSE is feeding streamingBlocks live).
+  useEffect(() => {
+    if (!currentSessionId || !externalRunning || running) return;
+    let stopped = false;
+    const tick = async () => {
+      try {
+        const r = await fetch(`/api/sessions/${currentSessionId}/streaming-state`).then((r) => r.json());
+        if (stopped) return;
+        const blocks: ChatBlock[] = r.blocks ?? [];
+        // Only re-render when something actually changed — chat-engine only
+        // appends, so a length match means no new blocks landed.
+        setStreamingBlocks((prev) => (prev && prev.length === blocks.length ? prev : blocks));
+      } catch { /* ignore */ }
+    };
+    tick();
+    const intId = setInterval(tick, 1000);
+    return () => { stopped = true; clearInterval(intId); };
+  }, [currentSessionId, externalRunning, running]);
 
   // Reflect current session in URL (state → URL). Intentionally does NOT depend on
   // queryStringSession — otherwise URL-driven state changes would trigger a URL
@@ -124,6 +168,37 @@ export default function ProjectChatPage({ params }: { params: Promise<{ id: stri
     if (!currentSessionId) return;
     router.replace(`/projects/${id}?s=${currentSessionId}`, { scroll: false });
   }, [currentSessionId, id, router]);
+
+  // Tabs: hydrate from localStorage on mount, persist on change.
+  useEffect(() => {
+    try {
+      const saved = JSON.parse(localStorage.getItem(tabsKey) ?? '[]');
+      if (Array.isArray(saved)) setOpenTabs(saved.filter((x): x is string => typeof x === 'string'));
+    } catch { /* ignore */ }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tabsKey]);
+
+  useEffect(() => {
+    try { localStorage.setItem(tabsKey, JSON.stringify(openTabs)); } catch { /* ignore */ }
+  }, [tabsKey, openTabs]);
+
+  // Drop tabs whose sessions were deleted elsewhere.
+  useEffect(() => {
+    if (sessions.length === 0) return;
+    const valid = new Set(sessions.map((s) => s.id));
+    setOpenTabs((prev) => {
+      const next = prev.filter((sid) => valid.has(sid));
+      return next.length === prev.length ? prev : next;
+    });
+  }, [sessions]);
+
+  // Auto-pin the current session as a tab. Covers the case where a user
+  // clicks a session in the sidebar — the URL ?s= flips, currentSessionId
+  // updates, and we ensure it joins the tab strip.
+  useEffect(() => {
+    if (!currentSessionId) return;
+    setOpenTabs((prev) => (prev.includes(currentSessionId) ? prev : [...prev, currentSessionId]));
+  }, [currentSessionId]);
 
   // Process SSE events
   useEffect(() => {
@@ -283,6 +358,34 @@ export default function ProjectChatPage({ params }: { params: Promise<{ id: stri
     }
   }
 
+  function switchTab(sid: string) {
+    if (sid === currentSessionId) return;
+    setCurrentSessionId(sid);
+  }
+
+  function closeTab(sid: string) {
+    setOpenTabs((prev) => {
+      const idx = prev.indexOf(sid);
+      if (idx === -1) return prev;
+      const next = [...prev.slice(0, idx), ...prev.slice(idx + 1)];
+      // If we just closed the active tab, jump to the neighbor (right, then left).
+      if (sid === currentSessionId && next.length > 0) {
+        const target = next[idx] ?? next[idx - 1] ?? next[0];
+        setCurrentSessionId(target);
+      }
+      return next;
+    });
+  }
+
+  async function newSessionTab() {
+    const r = await fetch(`/api/projects/${id}/sessions`, { method: 'POST' }).then((r) => r.json());
+    if (!r?.session?.id) return;
+    await loadSessions();
+    setOpenTabs((prev) => (prev.includes(r.session.id) ? prev : [...prev, r.session.id]));
+    setCurrentSessionId(r.session.id);
+    window.dispatchEvent(new Event('timo:refresh-sidebar'));
+  }
+
   async function deleteCurrentSession() {
     if (!currentSessionId) return;
     const ok = await confirm({
@@ -381,6 +484,61 @@ export default function ProjectChatPage({ params }: { params: Promise<{ id: stri
             )}
           </div>
         </header>
+
+        {/* Tab strip */}
+        {openTabs.length > 0 && (
+          <div className="border-b border-[var(--border)] bg-[var(--surface-1)] flex items-stretch overflow-x-auto scrollbar-slim">
+            {openTabs.map((sid) => {
+              const session = sessions.find((s) => s.id === sid);
+              if (!session) return null;
+              const active = sid === currentSessionId;
+              const isRunning = runningSessionIds.has(sid);
+              return (
+                <div
+                  key={sid}
+                  className={`group/tab relative flex items-center gap-2 px-3 py-2 max-w-[220px] min-w-[120px] border-r border-[var(--border)] cursor-pointer transition ${
+                    active
+                      ? 'bg-[var(--bg)] text-[var(--foreground)]'
+                      : 'text-[var(--fg-muted)] hover:bg-[var(--surface-2)] hover:text-[var(--foreground)]'
+                  }`}
+                  onClick={() => switchTab(sid)}
+                  role="tab"
+                  aria-selected={active}
+                  title={session.title}
+                >
+                  {active && (
+                    <span className="absolute top-0 left-0 right-0 h-0.5 bg-[var(--accent)]" aria-hidden />
+                  )}
+                  {isRunning && (
+                    <span
+                      className="shrink-0 w-1.5 h-1.5 rounded-full bg-[var(--accent)] animate-pulse"
+                      aria-label="응답 중"
+                    />
+                  )}
+                  <span className="truncate text-xs flex-1">{session.title}</span>
+                  <button
+                    type="button"
+                    onClick={(e) => { e.stopPropagation(); closeTab(sid); }}
+                    className="shrink-0 w-4 h-4 rounded text-[var(--fg-dim)] hover:text-red-400 hover:bg-[var(--surface-3)] flex items-center justify-center text-xs opacity-0 group-hover/tab:opacity-100 focus:opacity-100"
+                    title="탭 닫기 (대화는 유지됨)"
+                    aria-label="탭 닫기"
+                  >
+                    ×
+                  </button>
+                </div>
+              );
+            })}
+            <button
+              type="button"
+              onClick={newSessionTab}
+              className="shrink-0 w-9 flex items-center justify-center text-[var(--fg-dim)] hover:text-[var(--accent)] hover:bg-[var(--surface-2)] transition"
+              title="새 대화"
+              aria-label="새 대화"
+            >
+              +
+            </button>
+          </div>
+        )}
 
         {/* Messages */}
         <div ref={scrollRef} className="flex-1 overflow-y-auto px-6 py-8 space-y-8">

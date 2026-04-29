@@ -9,7 +9,13 @@ import {
 } from './db/queries/chat';
 import { syncTodos } from './todo-sync';
 import { extractSkillFromMessage, listSkills, type ISkill } from './skills';
-import { markRunning, markIdle, setProcess, clearProcess } from './chat-state';
+import {
+  markRunning,
+  markIdle,
+  setProcess,
+  clearProcess,
+  appendStreamingBlock,
+} from './chat-state';
 import type { IChatMessage, ChatBlock, IChatSession, ITask, AgentType, IAttachment } from '@/types';
 
 export type ChatEvent =
@@ -185,6 +191,7 @@ export async function runChatTurn(
         const newBlocks = blocksFromRaw(raw);
         for (const b of newBlocks) {
           assistantBlocks.push(b);
+          appendStreamingBlock(sessionId, b);
           sink({ type: 'assistant-delta', block: b });
 
           // Intercept TodoWrite → sync tasks

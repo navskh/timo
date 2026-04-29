@@ -76,5 +76,14 @@ export function useSSEStream() {
     setRunning(false);
   }, []);
 
-  return { events, running, start, stop };
+  /** Drop the current event log. Combine with `stop()` when switching sessions
+   *  to prevent the previous session's deltas from polluting the new view. */
+  const reset = useCallback(() => {
+    abortRef.current?.abort();
+    abortRef.current = null;
+    setEvents([]);
+    setRunning(false);
+  }, []);
+
+  return { events, running, start, stop, reset };
 }
