@@ -4,7 +4,8 @@ export default function manifest(): MetadataRoute.Manifest {
   return {
     name: 'TIMO — Think · Idea-Manager · Operation',
     short_name: 'TIMO',
-    description: 'Local-first AI pair-programmer. Chat like Claude Code, auto-tracked tasks.',
+    description:
+      'Local-first AI pair-programmer. Spawn your Claude / Gemini / Codex CLI, chat naturally, and let TIMO auto-track tasks and run them in an organic loop.',
     start_url: '/',
     display: 'standalone',
     orientation: 'any',

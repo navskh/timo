@@ -1,0 +1,40 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
+  <defs>
+    <radialGradient id="glow" cx="22%" cy="0%" r="60%">
+      <stop offset="0%" stop-color="#4c1d95" stop-opacity="0.85"/>
+      <stop offset="55%" stop-color="#1a0b30" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="title" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#ffffff"/>
+      <stop offset="100%" stop-color="#c4b5fd"/>
+    </linearGradient>
+    <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
+      <path d="M 40 0 L 0 0 0 40" fill="none" stroke="#ffffff" stroke-opacity="0.04" stroke-width="1"/>
+    </pattern>
+  </defs>
+
+  <rect width="1200" height="630" fill="#0a0612"/>
+  <rect width="1200" height="630" fill="url(#grid)"/>
+  <rect width="1200" height="630" fill="url(#glow)"/>
+
+  <g font-family="Helvetica, Arial, sans-serif">
+    <text x="96" y="158" fill="#a78bfa" font-size="26" font-weight="600" letter-spacing="8">THINK · IDEA-MANAGER · OPERATION</text>
+
+    <text x="96" y="380" fill="url(#title)" font-size="224" font-weight="800" letter-spacing="-8">TIMO</text>
+
+    <text x="96" y="468" fill="#e9e3ff" font-size="42" font-weight="600">Local-first AI executor.</text>
+
+    <text x="96" y="514" fill="#a3a0b5" font-size="26">Brain dump → tasks → auto-run loop.</text>
+    <text x="96" y="546" fill="#a3a0b5" font-size="26">Spawns your Claude / Gemini / Codex CLI.</text>
+  </g>
+
+  <g transform="translate(96, 565)">
+    <circle cx="6" cy="6" r="6" fill="#8b5cf6"/>
+    <text x="22" y="11" fill="#8b8ba0" font-size="20" font-family="Menlo, Courier, monospace">github.com/navskh/timo</text>
+  </g>
+
+  <g transform="translate(1010, 95)">
+    <rect width="94" height="94" rx="20" fill="#8b5cf6"/>
+    <text x="47" y="62" fill="#ffffff" font-size="56" font-weight="800" font-family="Menlo, Courier, monospace" text-anchor="middle">T</text>
+  </g>
+</svg>
