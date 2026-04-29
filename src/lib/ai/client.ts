@@ -98,12 +98,20 @@ export function runAgent(
 
     let buffer = '';
     let resultText = '';
+    /** Raw stdout fallback for diagnostics. The streaming parser silently
+     *  drops non-JSON lines (auth prompts, "Error:" plain text, etc.), so we
+     *  keep a small uninterpreted slice to surface in error messages. */
+    let rawStdoutTail = '';
     let stderrText = '';
     let lastEmittedLength = 0;
 
     if (useStreamJson) {
       proc.stdout?.on('data', (chunk: Buffer) => {
-        buffer += chunk.toString();
+        const text = chunk.toString();
+        // Keep a small tail of raw stdout for the failure path; bounded so a
+        // very chatty CLI doesn't blow up memory.
+        rawStdoutTail = (rawStdoutTail + text).slice(-2000);
+        buffer += text;
         const lines = buffer.split('\n');
         buffer = lines.pop() ?? '';
 
@@ -152,8 +160,26 @@ export function runAgent(
         return;
       }
       if (code !== 0 && !resultText) {
-        const detail = stderrText.slice(0, 500) || (signal ? `killed by signal ${signal}` : 'no output');
-        reject(new Error(`${config.name} CLI exited with code ${code}: ${detail}`));
+        // Build a richer diagnostic when the streaming parser dropped
+        // everything: surface stderr, the raw stdout tail (often where the
+        // real error sits — auth prompts, "Error: ..." text), the resolved
+        // binary path, and the cwd. With these the user can usually tell
+        // whether it's a login/quota/binary issue at a glance.
+        const parts: string[] = [];
+        const stderrTrimmed = stderrText.trim();
+        const stdoutTrimmed = rawStdoutTail.trim();
+        if (stderrTrimmed) parts.push(`stderr: ${stderrTrimmed.slice(0, 500)}`);
+        if (stdoutTrimmed && useStreamJson) parts.push(`stdout: ${stdoutTrimmed.slice(0, 500)}`);
+        if (signal) parts.push(`signal: ${signal}`);
+        if (parts.length === 0) {
+          // Truly silent exit. Most common cause is the user's CLI auth
+          // expired (claude /login) or the binary is broken/outdated. Hint
+          // toward those rather than leaving the user with nothing.
+          parts.push('no output (try running the CLI in a terminal — likely a login or quota issue)');
+        }
+        parts.push(`binary: ${resolvedBinary}`);
+        parts.push(`cwd: ${effectiveCwd}`);
+        reject(new Error(`${config.name} CLI exited with code ${code}\n  ${parts.join('\n  ')}`));
         return;
       }
       resolve(resultText);
