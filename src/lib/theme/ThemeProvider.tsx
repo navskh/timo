@@ -1,13 +1,7 @@
 'use client';
 
 import { createContext, useCallback, useContext, useSyncExternalStore } from 'react';
-import {
-  themes,
-  getThemeById,
-  DEFAULT_THEME_ID,
-  THEME_STORAGE_KEY,
-  type ITheme,
-} from './themes';
+import { themes, getThemeById, DEFAULT_THEME_ID, type ITheme } from './themes';
 
 interface IThemeContext {
   theme: ITheme;
@@ -21,7 +15,8 @@ const themeListeners = new Set<() => void>();
 
 function readThemeId(): string {
   if (typeof document === 'undefined') return DEFAULT_THEME_ID;
-  // Pre-hydration boot script already stamped data-theme on <html>; trust that.
+  // The server component stamps data-theme on <html> from preferences.json
+  // before sending HTML to the client; we trust whatever is on the element.
   return document.documentElement.getAttribute('data-theme') ?? DEFAULT_THEME_ID;
 }
 
@@ -40,9 +35,14 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
 
   const setTheme = useCallback((id: string) => {
     const t = getThemeById(id);
+    // Optimistic UI: flip the DOM immediately, persist in the background.
     document.documentElement.setAttribute('data-theme', t.id);
-    try { localStorage.setItem(THEME_STORAGE_KEY, t.id); } catch { /* private mode */ }
     for (const l of themeListeners) l();
+    void fetch('/api/preferences', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ theme: t.id }),
+    }).catch(() => { /* server unreachable — theme still applied in this session */ });
   }, []);
 
   return (

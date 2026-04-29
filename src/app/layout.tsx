@@ -5,12 +5,15 @@ import { AppSidebar } from '@/components/AppSidebar';
 import { DialogHost } from '@/components/ui/dialogs';
 import { UpdaterClient } from '@/components/UpdaterClient';
 import { ThemeProvider } from '@/lib/theme/ThemeProvider';
-import { THEME_STORAGE_KEY, DEFAULT_THEME_ID } from '@/lib/theme/themes';
+import { DEFAULT_THEME_ID, getThemeById } from '@/lib/theme/themes';
+import { readPreferences } from '@/lib/preferences';
 
-// Inline pre-hydration script: read saved theme from localStorage and stamp
-// `data-theme` on <html> before React mounts. Without this, the first paint
-// would always be the default theme and then "flash" into the saved one.
-const THEME_BOOT_SCRIPT = `(function(){try{var t=localStorage.getItem(${JSON.stringify(THEME_STORAGE_KEY)})||${JSON.stringify(DEFAULT_THEME_ID)};document.documentElement.setAttribute('data-theme',t);}catch(e){}})();`;
+// Tauri spawns the Next sidecar on a fresh ephemeral port every launch, so
+// browser-origin storage (localStorage / cookies) gets wiped between sessions.
+// The active theme lives in ~/.timo/data/preferences.json instead, and we
+// read it server-side here so the very first paint already has the right
+// `data-theme` attribute — no boot script, no FOUC.
+export const dynamic = 'force-dynamic';
 
 export const metadata: Metadata = {
   title: 'TIMO — Think · Idea-Manager · Operation',
@@ -32,11 +35,9 @@ export const viewport: Viewport = {
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
+  const themeId = getThemeById(readPreferences().theme ?? DEFAULT_THEME_ID).id;
   return (
-    <html lang="ko">
-      <head>
-        <script dangerouslySetInnerHTML={{ __html: THEME_BOOT_SCRIPT }} />
-      </head>
+    <html lang="ko" data-theme={themeId}>
       <body>
         <ThemeProvider>
           <div className="flex h-screen overflow-hidden">

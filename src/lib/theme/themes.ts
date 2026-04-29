@@ -74,7 +74,6 @@ export const themes: ITheme[] = [
 ];
 
 export const DEFAULT_THEME_ID = 'midnight';
-export const THEME_STORAGE_KEY = 'timo-theme';
 
 export function getThemeById(id: string | null | undefined): ITheme {
   return themes.find((t) => t.id === id) ?? themes[0];
