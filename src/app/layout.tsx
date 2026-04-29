@@ -7,6 +7,8 @@ import { UpdaterClient } from '@/components/UpdaterClient';
 import { ThemeProvider } from '@/lib/theme/ThemeProvider';
 import { DEFAULT_THEME_ID, getThemeById } from '@/lib/theme/themes';
 import { readPreferences } from '@/lib/preferences';
+import { TabsProvider } from '@/lib/tabs/TabsContext';
+import { TabsBar } from '@/components/TabsBar';
 
 // Tauri spawns the Next sidecar on a fresh ephemeral port every launch, so
 // browser-origin storage (localStorage / cookies) gets wiped between sessions.
@@ -114,14 +116,21 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="ko" data-theme={themeId}>
       <body>
         <ThemeProvider>
-          <div className="flex h-screen overflow-hidden">
-            <Suspense fallback={<aside className="w-[260px] shrink-0 border-r border-[var(--border)]" />}>
-              <AppSidebar />
-            </Suspense>
-            <div className="flex-1 min-w-0 overflow-hidden flex flex-col">{children}</div>
-          </div>
-          <DialogHost />
-          <UpdaterClient />
+          <TabsProvider>
+            <div className="flex h-screen overflow-hidden">
+              <Suspense fallback={<aside className="w-[260px] shrink-0 border-r border-[var(--border)]" />}>
+                <AppSidebar />
+              </Suspense>
+              <div className="flex-1 min-w-0 overflow-hidden flex flex-col">
+                <Suspense fallback={null}>
+                  <TabsBar />
+                </Suspense>
+                {children}
+              </div>
+            </div>
+            <DialogHost />
+            <UpdaterClient />
+          </TabsProvider>
         </ThemeProvider>
       </body>
     </html>

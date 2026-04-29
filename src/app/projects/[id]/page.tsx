@@ -9,6 +9,7 @@ import { DirectoryPicker } from '@/components/DirectoryPicker';
 import { Composer } from '@/components/Composer';
 import { confirm, toast } from '@/components/ui/dialogs';
 import { useSSEStream } from '@/lib/use-sse-stream';
+import { useTabs } from '@/lib/tabs/TabsContext';
 
 export default function ProjectChatPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
@@ -30,14 +31,9 @@ export default function ProjectChatPage({ params }: { params: Promise<{ id: stri
   const { events, running, start, reset } = useSSEStream();
   const scrollRef = useRef<HTMLDivElement>(null);
 
-  // Open tabs (per-project, localStorage-persisted). Tabs are an ordered list
-  // of session IDs the user is actively juggling — clicking a session in the
-  // sidebar pins it as a tab; closing a tab doesn't delete the session.
-  const tabsKey = `timo-tabs-${id}`;
-  const [openTabs, setOpenTabs] = useState<string[]>([]);
-  // Set of session IDs currently producing an assistant turn on the server,
-  // used by the tab strip to render a running dot on each tab.
-  const [runningSessionIds, setRunningSessionIds] = useState<Set<string>>(new Set());
+  // Tabs live globally now (TabsBar at layout level). The page just pins the
+  // current session as a tab whenever it changes.
+  const { openTab } = useTabs();
 
   const loadProject = useCallback(async () => {
     const r = await fetch(`/api/projects/${id}`).then((r) => r.json());
@@ -98,9 +94,9 @@ export default function ProjectChatPage({ params }: { params: Promise<{ id: stri
     setStreamingBlocks(null);
   }, [currentSessionId, loadMessages, reset]);
 
-  // Poll all running sessions every 2s. Drives both the tab-strip indicators
-  // (any tab can show a running dot) and the externalRunning flag for the
-  // current session (so reattach UI kicks in).
+  // Poll the current session's run status every 2s. Drives externalRunning
+  // for the reattach UI; the tab strip's running dots come from TabsBar's own
+  // poll so they stay in sync across projects.
   useEffect(() => {
     let stopped = false;
     const poll = async () => {
@@ -108,7 +104,6 @@ export default function ProjectChatPage({ params }: { params: Promise<{ id: stri
         const r = await fetch('/api/sessions/status').then((r) => r.json());
         if (stopped) return;
         const ids: string[] = (r.running ?? []).map((x: { session_id: string }) => x.session_id);
-        setRunningSessionIds(new Set(ids));
         setExternalRunning(currentSessionId ? ids.includes(currentSessionId) : false);
       } catch { /* ignore */ }
     };
@@ -118,12 +113,6 @@ export default function ProjectChatPage({ params }: { params: Promise<{ id: stri
     const onFinished = (e: Event) => {
       const detail = (e as CustomEvent<{ session_id: string }>).detail;
       if (!detail?.session_id) return;
-      setRunningSessionIds((prev) => {
-        if (!prev.has(detail.session_id)) return prev;
-        const next = new Set(prev);
-        next.delete(detail.session_id);
-        return next;
-      });
       if (detail.session_id === currentSessionId) {
         setExternalRunning(false);
         setStreamingBlocks(null);
@@ -169,36 +158,21 @@ export default function ProjectChatPage({ params }: { params: Promise<{ id: stri
     router.replace(`/projects/${id}?s=${currentSessionId}`, { scroll: false });
   }, [currentSessionId, id, router]);
 
-  // Tabs: hydrate from localStorage on mount, persist on change.
+  // Pin the active session as a tab in the global tab strip whenever project
+  // and session metadata are both available. Sidebar clicks flip the URL,
+  // currentSessionId updates here, and this effect ensures the tab is created
+  // (or its title is refreshed if the session was renamed).
   useEffect(() => {
-    try {
-      const saved = JSON.parse(localStorage.getItem(tabsKey) ?? '[]');
-      if (Array.isArray(saved)) setOpenTabs(saved.filter((x): x is string => typeof x === 'string'));
-    } catch { /* ignore */ }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tabsKey]);
-
-  useEffect(() => {
-    try { localStorage.setItem(tabsKey, JSON.stringify(openTabs)); } catch { /* ignore */ }
-  }, [tabsKey, openTabs]);
-
-  // Drop tabs whose sessions were deleted elsewhere.
-  useEffect(() => {
-    if (sessions.length === 0) return;
-    const valid = new Set(sessions.map((s) => s.id));
-    setOpenTabs((prev) => {
-      const next = prev.filter((sid) => valid.has(sid));
-      return next.length === prev.length ? prev : next;
+    if (!project || !currentSessionId) return;
+    const session = sessions.find((s) => s.id === currentSessionId);
+    if (!session) return;
+    openTab({
+      session_id: session.id,
+      project_id: project.id,
+      title: session.title,
+      project_name: project.name,
     });
-  }, [sessions]);
-
-  // Auto-pin the current session as a tab. Covers the case where a user
-  // clicks a session in the sidebar — the URL ?s= flips, currentSessionId
-  // updates, and we ensure it joins the tab strip.
-  useEffect(() => {
-    if (!currentSessionId) return;
-    setOpenTabs((prev) => (prev.includes(currentSessionId) ? prev : [...prev, currentSessionId]));
-  }, [currentSessionId]);
+  }, [project, currentSessionId, sessions, openTab]);
 
   // Process SSE events
   useEffect(() => {
@@ -358,34 +332,6 @@ export default function ProjectChatPage({ params }: { params: Promise<{ id: stri
     }
   }
 
-  // All tab navigation goes through the URL — that's the same pathway sidebar
-  // clicks use, so currentSessionId / openTabs / messages all stay in sync via
-  // the existing queryStringSession + auto-pin effects.
-  function switchTab(sid: string) {
-    if (sid === currentSessionId) return;
-    router.push(`/projects/${id}?s=${sid}`);
-  }
-
-  function closeTab(sid: string) {
-    const idx = openTabs.indexOf(sid);
-    if (idx === -1) return;
-    const next = [...openTabs.slice(0, idx), ...openTabs.slice(idx + 1)];
-    setOpenTabs(next);
-    // If we just closed the active tab, jump to the neighbor (right, then left).
-    if (sid === currentSessionId && next.length > 0) {
-      const target = next[idx] ?? next[idx - 1] ?? next[0];
-      router.push(`/projects/${id}?s=${target}`);
-    }
-  }
-
-  async function newSessionTab() {
-    const r = await fetch(`/api/projects/${id}/sessions`, { method: 'POST' }).then((r) => r.json());
-    if (!r?.session?.id) return;
-    await loadSessions();
-    router.push(`/projects/${id}?s=${r.session.id}`);
-    window.dispatchEvent(new Event('timo:refresh-sidebar'));
-  }
-
   async function deleteCurrentSession() {
     if (!currentSessionId) return;
     const ok = await confirm({
@@ -484,71 +430,6 @@ export default function ProjectChatPage({ params }: { params: Promise<{ id: stri
             )}
           </div>
         </header>
-
-        {/* Tab strip — Chrome-style: strip is darker than the chat area, the
-            active tab is bg-matched to the chat area so it visually "drops
-            into" the content; an accent stripe on top reinforces selection. */}
-        {openTabs.length > 0 && (
-          <div className="border-b border-[var(--border)] bg-[var(--surface-2)] flex items-stretch relative">
-            <div className="flex items-stretch overflow-x-auto scrollbar-slim flex-1 min-w-0">
-              {openTabs.map((sid) => {
-                const session = sessions.find((s) => s.id === sid);
-                if (!session) return null;
-                const active = sid === currentSessionId;
-                const isRunning = runningSessionIds.has(sid);
-                return (
-                  <div
-                    key={sid}
-                    className={`group/tab relative flex items-center gap-2 px-3.5 py-2.5 max-w-[220px] min-w-[140px] cursor-pointer transition border-r border-[var(--border)] ${
-                      active
-                        ? 'bg-[var(--bg)] text-[var(--foreground)] font-medium'
-                        : 'text-[var(--fg-muted)] hover:bg-[var(--surface-3)] hover:text-[var(--foreground)]'
-                    }`}
-                    onClick={() => switchTab(sid)}
-                    role="tab"
-                    aria-selected={active}
-                    title={session.title}
-                  >
-                    {active && (
-                      <span
-                        className="absolute top-0 left-0 right-0 h-[3px] bg-[var(--accent)]"
-                        aria-hidden
-                      />
-                    )}
-                    {isRunning && (
-                      <span
-                        className="shrink-0 w-1.5 h-1.5 rounded-full bg-[var(--accent)] animate-pulse"
-                        aria-label="응답 중"
-                      />
-                    )}
-                    <span className="truncate text-xs flex-1">{session.title}</span>
-                    <button
-                      type="button"
-                      onClick={(e) => { e.stopPropagation(); closeTab(sid); }}
-                      className={`shrink-0 w-4 h-4 rounded text-[var(--fg-dim)] hover:text-[var(--danger)] hover:bg-[var(--surface-4)] flex items-center justify-center text-xs transition ${
-                        active ? 'opacity-60 hover:opacity-100' : 'opacity-0 group-hover/tab:opacity-100 focus:opacity-100'
-                      }`}
-                      title="탭 닫기 (대화는 유지됨)"
-                      aria-label="탭 닫기"
-                    >
-                      ×
-                    </button>
-                  </div>
-                );
-              })}
-            </div>
-            {/* Sticky + button so it stays clickable even when many tabs scroll. */}
-            <button
-              type="button"
-              onClick={newSessionTab}
-              className="shrink-0 w-10 flex items-center justify-center text-base text-[var(--fg-dim)] hover:text-[var(--accent)] hover:bg-[var(--surface-3)] transition border-l border-[var(--border)]"
-              title="새 대화"
-              aria-label="새 대화"
-            >
-              +
-            </button>
-          </div>
-        )}
 
         {/* Messages */}
         <div ref={scrollRef} className="flex-1 overflow-y-auto px-6 py-8 space-y-8">

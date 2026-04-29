@@ -27,23 +27,43 @@ export function AppSidebar() {
   const [showNew, setShowNew] = useState(false);
   const [skills, setSkills] = useState<ISkillSummary[]>([]);
   const [runningIds, setRunningIds] = useState<Set<string>>(new Set());
-  const [runningSessions, setRunningSessions] = useState<
-    Array<{ session_id: string; project_id: string; title: string }>
-  >([]);
-  const [runningOnly, setRunningOnly] = useState(false);
+  // Pinned projects = "what I'm actively working on right now". Persisted as
+  // a Set; filter toggle below shows only these. Replaces the old running-
+  // only filter since "currently producing a turn" is too transient to be
+  // useful as a navigation filter.
+  const [pinnedProjectIds, setPinnedProjectIds] = useState<Set<string>>(new Set());
+  const [pinnedOnly, setPinnedOnly] = useState(false);
   const prevRunningRef = useRef<Map<string, string>>(new Map());
 
-  // "응답 중만 보기" preference — sticky across renders within a session.
-  // localStorage gets wiped on Tauri port change between launches, so we
-  // accept defaulting to "show all" on every fresh app start.
+  // Hydrate pin state + filter preference from localStorage on mount.
   useEffect(() => {
     try {
-      setRunningOnly(localStorage.getItem('timo-sidebar-running-only') === '1');
+      const ids = JSON.parse(localStorage.getItem('timo-pinned-projects') ?? '[]');
+      if (Array.isArray(ids)) {
+        setPinnedProjectIds(new Set(ids.filter((x): x is string => typeof x === 'string')));
+      }
+      setPinnedOnly(localStorage.getItem('timo-sidebar-pinned-only') === '1');
     } catch { /* ignore */ }
   }, []);
   useEffect(() => {
-    try { localStorage.setItem('timo-sidebar-running-only', runningOnly ? '1' : '0'); } catch { /* ignore */ }
-  }, [runningOnly]);
+    try {
+      localStorage.setItem('timo-pinned-projects', JSON.stringify([...pinnedProjectIds]));
+    } catch { /* ignore */ }
+  }, [pinnedProjectIds]);
+  useEffect(() => {
+    try {
+      localStorage.setItem('timo-sidebar-pinned-only', pinnedOnly ? '1' : '0');
+    } catch { /* ignore */ }
+  }, [pinnedOnly]);
+
+  function togglePin(projectId: string) {
+    setPinnedProjectIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(projectId)) next.delete(projectId);
+      else next.add(projectId);
+      return next;
+    });
+  }
 
   const activeProjectId = (() => {
     const m = pathname?.match(/^\/projects\/([^/]+)/);
@@ -95,7 +115,6 @@ export function AppSidebar() {
         }
         prevRunningRef.current = nextMap;
         setRunningIds(new Set(nextMap.keys()));
-        setRunningSessions(nextList);
       } catch { /* transient error — ignore */ }
     };
     poll();
@@ -205,29 +224,23 @@ export function AppSidebar() {
           </button>
         </div>
 
-        {/* Filter: show only sessions that are currently producing a turn. */}
+        {/* Filter: show only projects the user has pinned as "active focus".
+            Pin/unpin via the ★ button on each project row below. */}
         <div className="px-3 pt-1.5 pb-2">
           <button
-            onClick={() => setRunningOnly((v) => !v)}
+            onClick={() => setPinnedOnly((v) => !v)}
             className={`w-full flex items-center justify-center gap-1.5 px-2 py-1 rounded-md text-[11px] transition ${
-              runningOnly
+              pinnedOnly
                 ? 'bg-[var(--accent-bg)] text-[var(--accent-soft)] border border-[var(--accent-border)]'
                 : 'text-[var(--fg-dim)] hover:text-[var(--fg-muted)] hover:bg-[var(--surface-3)] border border-transparent'
             }`}
-            title={runningOnly ? '전체 세션 보기로 전환' : '응답 중인 세션만 보기로 전환'}
+            title={pinnedOnly ? '전체 프로젝트 보기로 전환' : '핀한 프로젝트만 보기로 전환'}
           >
-            <span
-              className={`inline-block w-1.5 h-1.5 rounded-full ${
-                runningOnly && runningSessions.length > 0
-                  ? 'bg-[var(--accent)] animate-pulse'
-                  : 'bg-[var(--fg-dim)]'
-              }`}
-              aria-hidden
-            />
-            <span>응답 중만 보기</span>
-            {runningSessions.length > 0 && (
+            <span aria-hidden className="text-[10px]">★</span>
+            <span>핀 프로젝트만</span>
+            {pinnedProjectIds.size > 0 && (
               <span className="text-[10px] mono text-[var(--fg-dim)]">
-                ({runningSessions.length})
+                ({pinnedProjectIds.size})
               </span>
             )}
           </button>
@@ -240,34 +253,22 @@ export function AppSidebar() {
               아직 프로젝트 없음
             </p>
           )}
-          {runningOnly && runningSessions.length === 0 && projects.length > 0 && (
-            <p className="px-3 py-6 text-xs text-[var(--fg-dim)] italic text-center">
-              지금 응답 중인 세션 없음
+          {pinnedOnly && pinnedProjectIds.size === 0 && projects.length > 0 && (
+            <p className="px-3 py-6 text-xs text-[var(--fg-dim)] italic text-center leading-relaxed">
+              핀한 프로젝트 없음
+              <br />
+              <span className="text-[var(--fg-muted)]">프로젝트 옆 ★를 눌러 핀</span>
             </p>
           )}
           <ul className="space-y-0.5">
-            {(runningOnly
-              ? projects.filter((p) => runningSessions.some((r) => r.project_id === p.id))
+            {(pinnedOnly
+              ? projects.filter((p) => pinnedProjectIds.has(p.id))
               : projects
             ).map((p) => {
-              // In runningOnly mode every visible project is forced open so the
-              // user sees its running sessions without an extra click.
-              const isOpen = runningOnly || expanded.has(p.id);
+              const isOpen = expanded.has(p.id);
               const isActive = activeProjectId === p.id;
-              // In runningOnly mode, build sessions directly from the live
-              // running list so we don't need a lazy /sessions fetch first.
-              const sessions: IChatSession[] = runningOnly
-                ? runningSessions
-                    .filter((r) => r.project_id === p.id)
-                    .map((r) => ({
-                      id: r.session_id,
-                      project_id: r.project_id,
-                      title: r.title,
-                      model: null,
-                      created_at: '',
-                      updated_at: '',
-                    }))
-                : sessionsByProject[p.id] ?? [];
+              const isPinned = pinnedProjectIds.has(p.id);
+              const sessions: IChatSession[] = sessionsByProject[p.id] ?? [];
               return (
                 <li key={p.id}>
                   <div
@@ -290,6 +291,18 @@ export function AppSidebar() {
                         {p.name}
                       </span>
                     </Link>
+                    <button
+                      onClick={() => togglePin(p.id)}
+                      className={`shrink-0 transition px-1.5 py-1 text-xs leading-none ${
+                        isPinned
+                          ? 'text-[var(--accent)] hover:text-[var(--accent-soft)]'
+                          : 'opacity-0 group-hover:opacity-100 text-[var(--fg-dim)] hover:text-[var(--accent)]'
+                      }`}
+                      title={isPinned ? '핀 해제' : '프로젝트 핀'}
+                      aria-label={isPinned ? '핀 해제' : '프로젝트 핀'}
+                    >
+                      {isPinned ? '★' : '☆'}
+                    </button>
                     <button
                       onClick={() => deleteProject(p.id, p.name)}
                       className="shrink-0 opacity-0 group-hover:opacity-100 text-[var(--fg-dim)] hover:text-[var(--danger)] transition px-1.5 py-1 text-xs"
