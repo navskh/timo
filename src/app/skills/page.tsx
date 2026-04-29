@@ -190,7 +190,7 @@ export default function SkillsPage() {
                 {!creating && (
                   <button
                     onClick={remove}
-                    className="text-xs px-3 py-1.5 rounded border border-[var(--border)] text-[var(--fg-muted)] hover:text-red-400 hover:border-red-700/50"
+                    className="text-xs px-3 py-1.5 rounded border border-[var(--border)] text-[var(--fg-muted)] hover:text-[var(--danger)] hover:border-[var(--danger-border)]"
                   >
                     삭제
                   </button>
@@ -265,7 +265,7 @@ export default function SkillsPage() {
         .input {
           width: 100%;
           padding: 0.5rem 0.7rem;
-          background: rgba(0, 0, 0, 0.35);
+          background: var(--surface-1);
           border: 1px solid var(--border);
           border-radius: 6px;
           font-size: 0.85rem;

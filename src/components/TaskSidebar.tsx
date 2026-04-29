@@ -126,10 +126,10 @@ export function TaskSidebar({ tasks, onDelete, onAdd, onToggleStatus, onReorderP
           />
         )}
         {groups.done.length > 0 && (
-          <Group label="✓ 완료" color="text-green-400" tasks={groups.done} onDelete={onDelete} onToggleStatus={onToggleStatus} />
+          <Group label="✓ 완료" color="text-[var(--success)]" tasks={groups.done} onDelete={onDelete} onToggleStatus={onToggleStatus} />
         )}
         {groups.failed.length > 0 && (
-          <Group label="✗ 실패" color="text-red-400" tasks={groups.failed} onDelete={onDelete} onToggleStatus={onToggleStatus} />
+          <Group label="✗ 실패" color="text-[var(--danger)]" tasks={groups.failed} onDelete={onDelete} onToggleStatus={onToggleStatus} />
         )}
       </div>
     </aside>
@@ -239,9 +239,9 @@ function Group({
                 }
                 className={`shrink-0 w-4 h-4 mt-0.5 rounded border transition ${
                   t.status === 'done'
-                    ? 'bg-green-600/80 border-green-500 text-white text-[10px] leading-none'
+                    ? 'bg-[var(--success)] border-[var(--success)] text-white text-[10px] leading-none'
                     : t.status === 'failed'
-                    ? 'bg-red-600/60 border-red-500 text-white text-[10px] leading-none'
+                    ? 'bg-[var(--danger-bg)] border-[var(--danger)] text-white text-[10px] leading-none'
                     : t.status === 'running'
                     ? 'border-[var(--accent)] bg-[var(--accent-bg)]'
                     : 'border-[var(--border-strong)] hover:border-[var(--accent)]'
@@ -253,7 +253,7 @@ function Group({
               {onDelete && (
                 <button
                   onClick={() => onDelete(t.id)}
-                  className="opacity-0 group-hover:opacity-100 text-[var(--fg-dim)] hover:text-red-400 transition"
+                  className="opacity-0 group-hover:opacity-100 text-[var(--fg-dim)] hover:text-[var(--danger)] transition"
                   title="삭제"
                 >
                   ×

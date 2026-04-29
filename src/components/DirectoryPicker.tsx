@@ -100,7 +100,7 @@ export function DirectoryPicker({ initialPath, onSelect, onClose }: Props) {
         {/* Entries */}
         <div className="flex-1 overflow-y-auto">
           {loading && <div className="p-6 text-sm text-[var(--fg-dim)]">로딩…</div>}
-          {error && <div className="p-6 text-sm text-red-400 mono">⚠ {error}</div>}
+          {error && <div className="p-6 text-sm text-[var(--danger)] mono">⚠ {error}</div>}
           {!loading && data && (
             <ul className="divide-y divide-[var(--border)]">
               {data.entries.filter((e) => e.isDir).length === 0 && (

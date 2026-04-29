@@ -134,7 +134,7 @@ export function NewProjectModal({ onClose, onCreated }: Props) {
         .input {
           width: 100%;
           padding: 0.5rem 0.7rem;
-          background: rgba(0, 0, 0, 0.35);
+          background: var(--surface-1);
           border: 1px solid var(--border);
           border-radius: 6px;
           font-size: 0.85rem;

@@ -456,7 +456,7 @@ export default function ProjectChatPage({ params }: { params: Promise<{ id: stri
               className={`flex items-center gap-1 text-[11px] mono px-2 py-1 rounded-md border transition max-w-[320px] ${
                 project.project_path
                   ? 'text-[var(--fg-muted)] border-[var(--border)] hover:border-[var(--accent-border)] hover:text-[var(--foreground)]'
-                  : 'text-amber-400 border-amber-800/50 bg-amber-950/30 hover:bg-amber-950/50'
+                  : 'text-[var(--warning)] border-[var(--warning-border)] bg-[var(--warning-bg)] hover:bg-[var(--warning-bg)]'
               }`}
               title="작업 디렉토리 변경"
             >
@@ -466,7 +466,7 @@ export default function ProjectChatPage({ params }: { params: Promise<{ id: stri
             {project.project_path && (
               <button
                 onClick={() => savePath(null)}
-                className="text-[var(--fg-dim)] hover:text-red-400 text-xs px-1"
+                className="text-[var(--fg-dim)] hover:text-[var(--danger)] text-xs px-1"
                 title="경로 해제"
               >
                 ×
@@ -476,7 +476,7 @@ export default function ProjectChatPage({ params }: { params: Promise<{ id: stri
             {currentSessionId && (
               <button
                 onClick={deleteCurrentSession}
-                className="text-xs text-[var(--fg-dim)] hover:text-red-400 px-2 py-1 rounded hover:bg-[var(--surface-3)]"
+                className="text-xs text-[var(--fg-dim)] hover:text-[var(--danger)] px-2 py-1 rounded hover:bg-[var(--surface-3)]"
                 title="현재 대화 삭제"
               >
                 대화 삭제
@@ -525,7 +525,7 @@ export default function ProjectChatPage({ params }: { params: Promise<{ id: stri
                     <button
                       type="button"
                       onClick={(e) => { e.stopPropagation(); closeTab(sid); }}
-                      className={`shrink-0 w-4 h-4 rounded text-[var(--fg-dim)] hover:text-red-400 hover:bg-[var(--surface-4)] flex items-center justify-center text-xs transition ${
+                      className={`shrink-0 w-4 h-4 rounded text-[var(--fg-dim)] hover:text-[var(--danger)] hover:bg-[var(--surface-4)] flex items-center justify-center text-xs transition ${
                         active ? 'opacity-60 hover:opacity-100' : 'opacity-0 group-hover/tab:opacity-100 focus:opacity-100'
                       }`}
                       title="탭 닫기 (대화는 유지됨)"
@@ -562,9 +562,9 @@ export default function ProjectChatPage({ params }: { params: Promise<{ id: stri
                 Claude Code를 쓰듯이 자연스럽게 요청하면, 작업 중 태스크를 오른쪽에 정리해줘요.
               </p>
               {!project.project_path && (
-                <div className="text-xs text-amber-400 bg-amber-950/30 border border-amber-800/50 rounded-md px-3 py-2 inline-block">
+                <div className="text-xs text-[var(--warning)] bg-[var(--warning-bg)] border border-[var(--warning-border)] rounded-md px-3 py-2 inline-block">
                   ⚠ 작업 디렉토리가 없어서 파일 수정이 서버 cwd에서 일어나요.{' '}
-                  <button onClick={() => setPickingPath(true)} className="underline hover:text-amber-300">
+                  <button onClick={() => setPickingPath(true)} className="underline hover:text-[var(--warning)]">
                     지금 설정
                   </button>
                 </div>

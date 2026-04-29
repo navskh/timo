@@ -20,9 +20,9 @@ interface LimitsResponse {
 
 function pctColor(p: number | null): string {
   if (p === null) return 'bg-[var(--surface-4)]';
-  if (p >= 80) return 'bg-red-500';
-  if (p >= 50) return 'bg-amber-400';
-  return 'bg-green-500';
+  if (p >= 80) return 'bg-[var(--danger-soft)]';
+  if (p >= 50) return 'bg-[var(--warning)]';
+  return 'bg-[var(--success)]';
 }
 
 function timeUntil(iso: string | null): string {
@@ -90,7 +90,7 @@ export function ClaudeLimitsBar() {
 
   if (status === 'error') {
     return (
-      <div className="border-t border-[var(--border)] px-3 py-2 text-[11px] text-red-400">
+      <div className="border-t border-[var(--border)] px-3 py-2 text-[11px] text-[var(--danger)]">
         <Link href="/settings" className="hover:underline" title={errorMsg}>
           ⚡ Claude 한도 오류 — 설정 열기
         </Link>

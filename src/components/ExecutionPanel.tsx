@@ -47,8 +47,8 @@ function StatusPill({ status }: { status: Props['status'] }) {
   const map = {
     idle: { label: 'idle', cls: 'bg-[var(--surface-3)] text-[var(--fg-muted)]' },
     running: { label: '● 실행 중', cls: 'bg-[var(--accent-bg)] text-[var(--accent-soft)] animate-pulse' },
-    done: { label: '✓ 완료', cls: 'bg-green-600/40 text-green-200' },
-    error: { label: '✗ 실패', cls: 'bg-red-600/40 text-red-200' },
+    done: { label: '✓ 완료', cls: 'bg-[var(--success-bg)] text-[var(--success-soft)]' },
+    error: { label: '✗ 실패', cls: 'bg-[var(--danger-bg)] text-[var(--danger-soft)]' },
     cancelled: { label: '중단', cls: 'bg-yellow-600/40 text-yellow-200' },
   }[status];
   return <span className={`px-2 py-0.5 rounded text-xs ${map.cls}`}>{map.label}</span>;
@@ -72,7 +72,7 @@ function BlockView({ block }: { block: StreamBlock }) {
   }
   if (block.kind === 'tool_result') {
     return (
-      <details className={`border rounded overflow-hidden ${block.isError ? 'border-red-600/60 bg-red-950/30' : 'border-[var(--border)] bg-[var(--muted)]/40'}`}>
+      <details className={`border rounded overflow-hidden ${block.isError ? 'border-[var(--danger-border)] bg-[var(--danger-bg)]' : 'border-[var(--border)] bg-[var(--muted)]/40'}`}>
         <summary className="px-2 py-1 text-xs cursor-pointer mono text-[var(--fg-muted)] select-none">
           {block.isError ? '⚠️ tool result (error)' : '↩ tool result'}
         </summary>
@@ -86,7 +86,7 @@ function BlockView({ block }: { block: StreamBlock }) {
     return <div className="text-xs italic text-[var(--fg-dim)]">{block.content}</div>;
   }
   if (block.kind === 'error') {
-    return <div className="text-xs text-red-400 mono">{block.content}</div>;
+    return <div className="text-xs text-[var(--danger)] mono">{block.content}</div>;
   }
   return null;
 }

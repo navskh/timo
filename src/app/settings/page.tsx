@@ -98,7 +98,7 @@ export default function SettingsPage() {
             ) : status?.connected ? (
               <div>
                 <div className="flex items-center gap-2 mb-3">
-                  <span className="inline-flex w-2 h-2 rounded-full bg-green-500" />
+                  <span className="inline-flex w-2 h-2 rounded-full bg-[var(--success)]" />
                   <span className="text-sm font-medium">연결됨</span>
                 </div>
                 <div className="text-xs text-[var(--fg-muted)] space-y-1 mono mb-4">
@@ -108,7 +108,7 @@ export default function SettingsPage() {
                 </div>
                 <button
                   onClick={disconnect}
-                  className="px-3 py-1.5 text-xs rounded border border-[var(--border)] text-[var(--fg-muted)] hover:text-red-400 hover:border-red-700/50"
+                  className="px-3 py-1.5 text-xs rounded border border-[var(--border)] text-[var(--fg-muted)] hover:text-[var(--danger)] hover:border-[var(--danger-border)]"
                 >
                   연결 끊기
                 </button>
@@ -179,7 +179,7 @@ export default function SettingsPage() {
         .input {
           width: 100%;
           padding: 0.5rem 0.7rem;
-          background: rgba(0, 0, 0, 0.35);
+          background: var(--surface-1);
           border: 1px solid var(--border);
           border-radius: 6px;
           font-size: 0.85rem;

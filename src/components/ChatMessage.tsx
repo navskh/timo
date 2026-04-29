@@ -166,7 +166,7 @@ function ClusterRenderer({ cluster }: { cluster: Cluster }) {
   if (cluster.kind === 'note') {
     if (cluster.block.kind === 'error') {
       return (
-        <div className="text-xs text-red-300 bg-red-950/40 border border-red-900/60 rounded px-2.5 py-1.5 mono">
+        <div className="text-xs text-[var(--danger)] bg-[var(--danger-bg)] border border-[var(--danger-border)] rounded px-2.5 py-1.5 mono">
           ⚠ {cluster.block.content}
         </div>
       );
@@ -231,15 +231,15 @@ function ToolPair({
   return (
     <details className={`group rounded-md border bg-[var(--muted)]/30 transition ${
       isError
-        ? 'border-red-700/60'
+        ? 'border-[var(--danger-border)]'
         : isTodo
-        ? 'border-amber-700/40'
+        ? 'border-[var(--warning-border)]'
         : 'border-[var(--border)] hover:border-[var(--accent-border)]'
     }`}>
       <summary className="cursor-pointer select-none flex items-center gap-2 px-2.5 py-1.5 text-[12px] leading-none">
         <span className="text-[var(--fg-muted)] group-open:rotate-90 transition-transform inline-block w-2">›</span>
         <span className="text-base leading-none">{icon}</span>
-        <span className={`mono font-medium ${isTodo ? 'text-amber-300' : 'text-[var(--accent-soft)]'}`}>
+        <span className={`mono font-medium ${isTodo ? 'text-[var(--warning)]' : 'text-[var(--accent-soft)]'}`}>
           {use.name}
         </span>
         {preview && (
@@ -248,7 +248,7 @@ function ToolPair({
           </span>
         )}
         {result && (
-          <span className={`text-[10px] shrink-0 mono ${isError ? 'text-red-400' : 'text-green-400/70'}`}>
+          <span className={`text-[10px] shrink-0 mono ${isError ? 'text-[var(--danger)]' : 'text-[var(--success)]'}`}>
             {isError ? 'error' : 'ok'}
           </span>
         )}
@@ -264,7 +264,7 @@ function ToolPair({
         {/* result */}
         {result && (
           <div>
-            <div className={`text-[10px] mono mb-1 uppercase tracking-wider ${isError ? 'text-red-400' : 'text-[var(--fg-dim)]'}`}>
+            <div className={`text-[10px] mono mb-1 uppercase tracking-wider ${isError ? 'text-[var(--danger)]' : 'text-[var(--fg-dim)]'}`}>
               {isError ? 'error' : 'result'}
             </div>
             <pre className="mono text-[11.5px] text-[var(--fg-muted)] whitespace-pre-wrap break-words max-h-72 overflow-y-auto scrollbar-slim">
@@ -280,7 +280,7 @@ function ToolPair({
 function ToolResultPill({ result }: { result: Extract<ChatBlock, { kind: 'tool_result' }> }) {
   return (
     <details className={`rounded-md border bg-[var(--muted)]/30 ${
-      result.isError ? 'border-red-700/60' : 'border-[var(--border)]'
+      result.isError ? 'border-[var(--danger-border)]' : 'border-[var(--border)]'
     }`}>
       <summary className="cursor-pointer px-2.5 py-1.5 text-[12px] text-[var(--fg-muted)] select-none flex items-center gap-2">
         <span className="text-base">↩</span>

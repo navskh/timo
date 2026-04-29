@@ -22,6 +22,23 @@
   --accent-on: #ffffff;
   --scheme: dark;
 
+  /* Semantic status colors. Dark variants are used by all dark themes by
+     default — light themes (e.g. Slate) override below. */
+  --warning: #fbbf24;
+  --warning-soft: #fcd34d;
+  --warning-bg: rgba(251, 191, 36, 0.12);
+  --warning-border: rgba(180, 83, 9, 0.5);
+
+  --danger: #f87171;
+  --danger-soft: #fca5a5;
+  --danger-bg: rgba(239, 68, 68, 0.14);
+  --danger-border: rgba(185, 28, 28, 0.55);
+
+  --success: #4ade80;
+  --success-soft: #86efac;
+  --success-bg: rgba(34, 197, 94, 0.14);
+  --success-border: rgba(21, 128, 61, 0.55);
+
   /* legacy aliases kept for existing components */
   --background: var(--bg);
   --muted: var(--surface-2);
@@ -46,6 +63,23 @@
   --accent-border: rgba(109, 76, 209, 0.5);
   --accent-on: #ffffff;
   --scheme: light;
+
+  /* Light-theme semantic status — saturated amber/red/green text becomes hard
+     to read on a light surface, so push toward the 700–800 range. */
+  --warning: #b45309;
+  --warning-soft: #92400e;
+  --warning-bg: rgba(245, 158, 11, 0.18);
+  --warning-border: rgba(217, 119, 6, 0.55);
+
+  --danger: #b91c1c;
+  --danger-soft: #991b1b;
+  --danger-bg: rgba(239, 68, 68, 0.12);
+  --danger-border: rgba(220, 38, 38, 0.5);
+
+  --success: #047857;
+  --success-soft: #065f46;
+  --success-bg: rgba(34, 197, 94, 0.16);
+  --success-border: rgba(34, 197, 94, 0.55);
 }
 
 [data-theme="nord"] {

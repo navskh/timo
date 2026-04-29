@@ -224,7 +224,7 @@ export function AppSidebar() {
                     </Link>
                     <button
                       onClick={() => deleteProject(p.id, p.name)}
-                      className="shrink-0 opacity-0 group-hover:opacity-100 text-[var(--fg-dim)] hover:text-red-400 transition px-1.5 py-1 text-xs"
+                      className="shrink-0 opacity-0 group-hover:opacity-100 text-[var(--fg-dim)] hover:text-[var(--danger)] transition px-1.5 py-1 text-xs"
                       title="프로젝트 삭제"
                     >
                       ×
@@ -276,7 +276,7 @@ export function AppSidebar() {
                               </Link>
                               <button
                                 onClick={() => deleteSession(p.id, s.id, s.title)}
-                                className="shrink-0 opacity-0 group-hover/session:opacity-100 text-[var(--fg-dim)] hover:text-red-400 transition px-1.5 py-1 text-[11px]"
+                                className="shrink-0 opacity-0 group-hover/session:opacity-100 text-[var(--fg-dim)] hover:text-[var(--danger)] transition px-1.5 py-1 text-[11px]"
                                 title="대화 삭제"
                               >
                                 ×

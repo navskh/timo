@@ -159,7 +159,7 @@ function ConfirmModal({ state }: { state: NonNullable<ConfirmState> }) {
             onClick={() => resolveConfirm(true)}
             className={`px-4 py-1.5 text-sm rounded-md font-medium ${
               state.danger
-                ? 'bg-red-600 hover:bg-red-500 text-white'
+                ? 'bg-[var(--danger)] hover:bg-[var(--danger-soft)] text-white'
                 : 'bg-[var(--accent)] hover:bg-[var(--accent-strong)] text-[var(--accent-on)]'
             }`}
           >
@@ -186,16 +186,16 @@ function ToastCard({ toast: t }: { toast: Toast }) {
   const dismiss = useCallback(() => dismissToast(t.id), [t.id]);
   const style = {
     success: {
-      bar: 'bg-green-500',
-      border: 'border-green-700/60',
+      bar: 'bg-[var(--success)]',
+      border: 'border-[var(--success-border)]',
       icon: '✓',
-      iconCls: 'text-green-300',
+      iconCls: 'text-[var(--success)]',
     },
     error: {
-      bar: 'bg-red-500',
-      border: 'border-red-700/60',
+      bar: 'bg-[var(--danger-soft)]',
+      border: 'border-[var(--danger-border)]',
       icon: '⚠',
-      iconCls: 'text-red-300',
+      iconCls: 'text-[var(--danger)]',
     },
     info: {
       bar: 'bg-[var(--accent)]',

@@ -265,7 +265,7 @@ export function Composer({ running, onSend, onStop }: Props) {
               <button
                 type="button"
                 onClick={() => removeAttachment(i)}
-                className="absolute top-0.5 right-0.5 w-5 h-5 rounded-full bg-black/70 text-white text-xs leading-none opacity-0 group-hover:opacity-100 transition hover:bg-red-600"
+                className="absolute top-0.5 right-0.5 w-5 h-5 rounded-full bg-black/70 text-white text-xs leading-none opacity-0 group-hover:opacity-100 transition hover:bg-[var(--danger)]"
                 title="제거"
               >
                 ×
@@ -327,7 +327,7 @@ export function Composer({ running, onSend, onStop }: Props) {
           <button
             type="button"
             onClick={() => onStop?.()}
-            className="h-[60px] px-5 bg-red-600 hover:bg-red-500 rounded-lg text-sm font-medium transition shrink-0 flex items-center gap-2"
+            className="h-[60px] px-5 bg-[var(--danger)] hover:bg-[var(--danger-soft)] rounded-lg text-sm font-medium transition shrink-0 flex items-center gap-2"
             title="실행 중단 (SIGTERM)"
           >
             <span className="inline-block w-2.5 h-2.5 bg-white rounded-sm" />
