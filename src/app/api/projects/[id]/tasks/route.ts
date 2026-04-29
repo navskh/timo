@@ -21,6 +21,8 @@ export async function POST(req: NextRequest, { params }: Ctx) {
     project_id: id,
     title: body.title,
     description: body.description ?? '',
+    // Direct add via the panel = user-owned. Sync won't prune it later.
+    source: 'user',
   });
   return NextResponse.json({ task }, { status: 201 });
 }

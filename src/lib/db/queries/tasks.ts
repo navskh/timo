@@ -1,6 +1,6 @@
 import { getDb } from '../index';
 import { generateId } from '@/lib/utils/id';
-import type { ITask, TaskStatus } from '@/types';
+import type { ITask, TaskStatus, TaskSource } from '@/types';
 
 export function getTasksByProject(projectId: string): ITask[] {
   return getDb()
@@ -31,6 +31,7 @@ export function createTask(input: {
   project_id: string;
   title: string;
   description?: string;
+  source?: TaskSource;
 }): ITask {
   const id = generateId();
   const maxOrder = getDb()
@@ -40,10 +41,17 @@ export function createTask(input: {
 
   getDb()
     .prepare(
-      `INSERT INTO tasks (id, project_id, title, description, sort_order)
-       VALUES (?, ?, ?, ?, ?)`,
+      `INSERT INTO tasks (id, project_id, title, description, source, sort_order)
+       VALUES (?, ?, ?, ?, ?, ?)`,
     )
-    .run(id, input.project_id, input.title, input.description ?? '', sortOrder);
+    .run(
+      id,
+      input.project_id,
+      input.title,
+      input.description ?? '',
+      input.source ?? 'ai',
+      sortOrder,
+    );
   return getTask(id)!;
 }
 

@@ -19,6 +19,8 @@ export function initSchema(db: any): void {
       description TEXT NOT NULL DEFAULT '',
       status TEXT NOT NULL DEFAULT 'pending'
         CHECK(status IN ('pending','running','done','failed')),
+      source TEXT NOT NULL DEFAULT 'ai'
+        CHECK(source IN ('ai','user')),
       sort_order INTEGER NOT NULL DEFAULT 0,
       created_at TEXT NOT NULL DEFAULT (datetime('now')),
       updated_at TEXT NOT NULL DEFAULT (datetime('now')),
@@ -86,5 +88,13 @@ export function initSchema(db: any): void {
   const messageCols = db.prepare("PRAGMA table_info(chat_messages)").all() as { name: string }[];
   if (!messageCols.some((c) => c.name === 'suggestions_json')) {
     db.exec("ALTER TABLE chat_messages ADD COLUMN suggestions_json TEXT NOT NULL DEFAULT '[]'");
+  }
+
+  const taskCols = db.prepare("PRAGMA table_info(tasks)").all() as { name: string }[];
+  if (!taskCols.some((c) => c.name === 'source')) {
+    // Existing rows pre-date source tracking. Most are AI-generated via
+    // TodoWrite, so default 'ai' matches reality and lets the new sync logic
+    // (which deletes unmatched 'ai' tasks) start cleaning them up.
+    db.exec("ALTER TABLE tasks ADD COLUMN source TEXT NOT NULL DEFAULT 'ai'");
   }
 }

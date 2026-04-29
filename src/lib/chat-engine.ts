@@ -49,10 +49,12 @@ function buildPrompt(
   parts.push(
     [
       'Work through the user\'s request autonomously. Use TodoWrite to plan and track sub-tasks as you work — each TodoWrite call is mirrored into the TIMO task panel that the user is watching live.',
-      'Critical rules for TodoWrite:',
-      '- To MARK AN EXISTING TASK DONE/IN-PROGRESS, include it in your todos array with its EXACT title (copy-paste from the list below) and the new status.',
-      '- Only introduce a new todo title for genuinely new work the user did not already list.',
-      '- When you finish a turn, your latest TodoWrite should reflect the full current state (mix of existing + new items), not a delta.',
+      'Critical rules for TodoWrite (your call REPLACES the panel — items you omit get DELETED):',
+      '- Each TodoWrite is the complete authoritative task list for this project. Include EVERY task you want to keep — even ones unrelated to the current turn.',
+      '- To MARK AN EXISTING TASK DONE/IN-PROGRESS, include it with its EXACT title (copy-paste from the list below) and the new status.',
+      '- Add a new todo only for genuinely new work the user did not already list.',
+      '- Drop a task ONLY when it is truly obsolete (already done elsewhere, no longer needed, duplicate). If unsure, keep it.',
+      '- Tasks with status `completed` stay in the list as a "done" record — keep them so the user can see what was accomplished, until they explicitly clean up.',
       'You may freely edit/read files, run shell commands, etc.',
     ].join('\n'),
   );

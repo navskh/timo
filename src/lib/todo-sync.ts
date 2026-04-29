@@ -1,13 +1,19 @@
 import { getDb } from './db';
 import { generateId } from './utils/id';
-import type { TaskStatus } from '@/types';
+import type { TaskStatus, TaskSource } from '@/types';
 
 /**
  * Claude Code's TodoWrite tool emits input shaped like:
  *   { todos: [{ content: "...", status: "pending|in_progress|completed", activeForm: "..." }] }
  *
- * We sync those into TIMO's `tasks` table on the given project, so that
- * the side panel shows the current working plan in real time.
+ * The system prompt instructs Claude that each TodoWrite is the **full current
+ * state** for the project (not a delta), so this sync treats the incoming list
+ * as authoritative for AI-tracked tasks:
+ *   - matches existing AI tasks by normalized title and updates status
+ *   - unmatched todos become new AI tasks
+ *   - existing AI tasks NOT in the incoming list get pruned
+ *   - tasks with source='user' (added manually via the panel) are never
+ *     touched — they're invisible to AI sync, only the user can manage them
  */
 interface TodoInput {
   content?: string;
@@ -26,13 +32,6 @@ function mapStatus(s: string | undefined): TaskStatus {
   }
 }
 
-/**
- * Reconciles the given todos with the project's tasks:
- *  - matches existing tasks by normalized title
- *  - unmatched todos are inserted
- *  - existing tasks not present in the current plan are left alone
- *    (we do NOT delete — user/AI may have pre-existing tasks from other flows)
- */
 /** Strip `[prefix] ` and collapse whitespace/case for loose matching. */
 function normalize(title: string): string {
   return title
@@ -43,21 +42,30 @@ function normalize(title: string): string {
 }
 
 export function syncTodos(projectId: string, todos: TodoInput[]): void {
-  if (!todos || todos.length === 0) return;
+  if (!todos) return;
   const db = getDb();
 
   const existing = db
     .prepare(
-      'SELECT id, title, status, sort_order FROM tasks WHERE project_id = ?',
+      'SELECT id, title, status, source, sort_order FROM tasks WHERE project_id = ?',
     )
-    .all(projectId) as Array<{ id: string; title: string; status: TaskStatus; sort_order: number }>;
+    .all(projectId) as Array<{
+      id: string;
+      title: string;
+      status: TaskStatus;
+      source: TaskSource;
+      sort_order: number;
+    }>;
 
-  const byExactTitle = new Map<string, (typeof existing)[number]>();
-  const byNormalized = new Map<string, (typeof existing)[number]>();
-  for (const t of existing) {
+  // Only AI-tracked tasks participate in matching/pruning. User-added tasks
+  // pass through untouched — even if a TodoWrite happens to title-collide.
+  const aiTasks = existing.filter((t) => t.source === 'ai');
+
+  const byExactTitle = new Map<string, (typeof aiTasks)[number]>();
+  const byNormalized = new Map<string, (typeof aiTasks)[number]>();
+  for (const t of aiTasks) {
     byExactTitle.set(t.title.trim(), t);
     const norm = normalize(t.title);
-    // Prefer keeping the first match (task with lower sort_order usually wins)
     if (norm && !byNormalized.has(norm)) byNormalized.set(norm, t);
   }
 
@@ -65,14 +73,16 @@ export function syncTodos(projectId: string, todos: TodoInput[]): void {
   let nextOrder = maxOrder + 1;
 
   const insert = db.prepare(
-    `INSERT INTO tasks (id, project_id, title, description, status, sort_order)
-     VALUES (?, ?, ?, '', ?, ?)`,
+    `INSERT INTO tasks (id, project_id, title, description, status, source, sort_order)
+     VALUES (?, ?, ?, '', ?, 'ai', ?)`,
   );
   const update = db.prepare(
     `UPDATE tasks SET status = ?, updated_at = datetime('now') WHERE id = ?`,
   );
-  // Prevent double-matching in one sync batch (if two todos normalize to the same existing task,
-  // only the first wins; the rest fall through to insert).
+  const remove = db.prepare(`DELETE FROM tasks WHERE id = ?`);
+
+  // Track which existing AI tasks the incoming TodoWrite still mentions; the
+  // rest get pruned at the end of the transaction.
   const claimed = new Set<string>();
 
   db.transaction(() => {
@@ -94,6 +104,15 @@ export function syncTodos(projectId: string, todos: TodoInput[]): void {
         if (match.status !== status) update.run(status, match.id);
       } else {
         insert.run(generateId(), projectId, title, status, nextOrder++);
+      }
+    }
+
+    // Prune AI tasks no longer in the plan. If todos was empty we still skip
+    // pruning, since an empty TodoWrite is more likely a glitch than an
+    // intentional "wipe everything" signal.
+    if (todos.length > 0) {
+      for (const t of aiTasks) {
+        if (!claimed.has(t.id)) remove.run(t.id);
       }
     }
   })();

@@ -14,12 +14,17 @@ export interface IProject {
   updated_at: string;
 }
 
+export type TaskSource = 'ai' | 'user';
+
 export interface ITask {
   id: string;
   project_id: string;
   title: string;
   description: string;
   status: TaskStatus;
+  /** 'ai' = synced via Claude TodoWrite (gets reconciled / pruned on next sync).
+   *  'user' = added manually via the panel; never deleted by sync logic. */
+  source: TaskSource;
   sort_order: number;
   created_at: string;
   updated_at: string;
