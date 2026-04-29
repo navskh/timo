@@ -33,6 +33,17 @@
   <meta name="theme-color" content="#8b5cf6" />
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%238b5cf6'/%3E%3Ctext x='50%25' y='55%25' text-anchor='middle' dominant-baseline='middle' font-family='monospace' font-weight='700' font-size='18' fill='white'%3ET%3C/text%3E%3C/svg%3E" />
 
+  <!-- Analytics: GoatCounter (free non-commercial tier, cookieless, GDPR-clean).
+       Activation:
+         1) https://www.goatcounter.com 에서 가입 → 서브도메인 선택 (예: timo)
+         2) 아래 YOUR_CODE 를 그 서브도메인 슬러그로 교체
+         3) 주석 해제 후 push — 즉시 페이지뷰·레퍼러·OS 분포 수집 시작
+       (data-goatcounter URL이 잘못된 채로 두면 DNS 실패 콘솔 에러가 나서, 활성화 전까진 주석 처리.) -->
+  <!--
+  <script data-goatcounter="https://YOUR_CODE.goatcounter.com/count"
+          async src="//gc.zgo.at/count.js"></script>
+  -->
+
   <!-- JSON-LD: SoftwareApplication schema for richer Google results -->
   <script type="application/ld+json">
   {
@@ -112,6 +123,7 @@
       <a href="#features" class="text-gray-300 hover:text-white transition">기능</a>
       <a href="#flow" class="text-gray-300 hover:text-white transition">사용 흐름</a>
       <a href="#download" class="text-gray-300 hover:text-white transition">다운로드</a>
+      <a href="#feedback" class="text-gray-300 hover:text-white transition">피드백</a>
       <a href="https://github.com/navskh/timo" target="_blank" rel="noopener" class="text-gray-300 hover:text-white transition flex items-center gap-1.5">
         <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.012 8.012 0 0 0 16 8c0-4.42-3.58-8-8-8z"/></svg>
         GitHub
@@ -291,6 +303,30 @@
   </div>
 </section>
 
+<!-- ─── Feedback ──────────────────────────────────────────────────────── -->
+<section id="feedback" class="py-20 px-6 border-t border-line/30">
+  <div class="max-w-2xl mx-auto text-center">
+    <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-violet-500/30 bg-violet-500/10 text-xs text-violet-200 mb-5">
+      <span>💬</span>
+      한 분 한 분 피드백 듣고 싶어요
+    </div>
+    <h2 class="text-2xl md:text-3xl font-bold mb-3">써보고 좋았던 것·불편했던 것 알려주세요</h2>
+    <p class="text-gray-400 mb-8 leading-relaxed">
+      버그 제보·기능 제안·사용 후기 다 환영. 작은 의견 한 줄도 다음 릴리스 방향에 들어갑니다.
+    </p>
+    <a href="mailto:navskh@gmail.com?subject=TIMO%20Feedback&body=%5B%EB%B2%84%EC%A0%84%5D%20v0.4.x%0A%5BOS%5D%20%0A%0A%EC%9E%91%EC%84%B1%20%EC%8B%9C%EC%9E%91..."
+       class="inline-flex items-center gap-2 px-7 py-3.5 rounded-xl bg-violet-500 hover:bg-violet-400 transition text-white font-semibold glow"
+       data-track="feedback-email">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-10 5L2 7"/></svg>
+      navskh@gmail.com 으로 메일
+    </a>
+    <p class="mt-5 text-xs text-gray-500 font-mono">
+      또는 GitHub Issues:
+      <a href="https://github.com/navskh/timo/issues/new" target="_blank" rel="noopener" class="text-violet-300 hover:text-violet-200 underline">github.com/navskh/timo/issues</a>
+    </p>
+  </div>
+</section>
+
 <!-- ─── Footer ─────────────────────────────────────────────────────────── -->
 <footer class="py-10 px-6 border-t border-line/30 text-center text-sm text-gray-500">
   <p>
@@ -300,7 +336,9 @@
     Made by
     <a href="https://github.com/navskh" target="_blank" rel="noopener" class="text-violet-300 hover:text-violet-200">@navskh</a>
     · MIT License ·
-    <a href="https://github.com/navskh/timo/issues" target="_blank" rel="noopener" class="text-violet-300 hover:text-violet-200">Report an issue</a>
+    <a href="mailto:navskh@gmail.com?subject=TIMO%20Feedback" class="text-violet-300 hover:text-violet-200">피드백</a>
+    ·
+    <a href="https://github.com/navskh/timo/issues" target="_blank" rel="noopener" class="text-violet-300 hover:text-violet-200">Issues</a>
   </p>
 </footer>
 
