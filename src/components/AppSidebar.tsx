@@ -27,7 +27,23 @@ export function AppSidebar() {
   const [showNew, setShowNew] = useState(false);
   const [skills, setSkills] = useState<ISkillSummary[]>([]);
   const [runningIds, setRunningIds] = useState<Set<string>>(new Set());
+  const [runningSessions, setRunningSessions] = useState<
+    Array<{ session_id: string; project_id: string; title: string }>
+  >([]);
+  const [runningOnly, setRunningOnly] = useState(false);
   const prevRunningRef = useRef<Map<string, string>>(new Map());
+
+  // "응답 중만 보기" preference — sticky across renders within a session.
+  // localStorage gets wiped on Tauri port change between launches, so we
+  // accept defaulting to "show all" on every fresh app start.
+  useEffect(() => {
+    try {
+      setRunningOnly(localStorage.getItem('timo-sidebar-running-only') === '1');
+    } catch { /* ignore */ }
+  }, []);
+  useEffect(() => {
+    try { localStorage.setItem('timo-sidebar-running-only', runningOnly ? '1' : '0'); } catch { /* ignore */ }
+  }, [runningOnly]);
 
   const activeProjectId = (() => {
     const m = pathname?.match(/^\/projects\/([^/]+)/);
@@ -79,6 +95,7 @@ export function AppSidebar() {
         }
         prevRunningRef.current = nextMap;
         setRunningIds(new Set(nextMap.keys()));
+        setRunningSessions(nextList);
       } catch { /* transient error — ignore */ }
     };
     poll();
@@ -178,13 +195,41 @@ export function AppSidebar() {
         </div>
 
         {/* Action */}
-        <div className="p-3">
+        <div className="px-3 pt-3 pb-1">
           <button
             onClick={() => setShowNew(true)}
             className="w-full flex items-center justify-center gap-1.5 px-3 py-2 rounded-md bg-[var(--accent)] hover:bg-[var(--accent-strong)] text-[var(--accent-on)] text-sm font-medium transition"
           >
             <span className="text-base leading-none">+</span>
             <span>새 프로젝트</span>
+          </button>
+        </div>
+
+        {/* Filter: show only sessions that are currently producing a turn. */}
+        <div className="px-3 pt-1.5 pb-2">
+          <button
+            onClick={() => setRunningOnly((v) => !v)}
+            className={`w-full flex items-center justify-center gap-1.5 px-2 py-1 rounded-md text-[11px] transition ${
+              runningOnly
+                ? 'bg-[var(--accent-bg)] text-[var(--accent-soft)] border border-[var(--accent-border)]'
+                : 'text-[var(--fg-dim)] hover:text-[var(--fg-muted)] hover:bg-[var(--surface-3)] border border-transparent'
+            }`}
+            title={runningOnly ? '전체 세션 보기로 전환' : '응답 중인 세션만 보기로 전환'}
+          >
+            <span
+              className={`inline-block w-1.5 h-1.5 rounded-full ${
+                runningOnly && runningSessions.length > 0
+                  ? 'bg-[var(--accent)] animate-pulse'
+                  : 'bg-[var(--fg-dim)]'
+              }`}
+              aria-hidden
+            />
+            <span>응답 중만 보기</span>
+            {runningSessions.length > 0 && (
+              <span className="text-[10px] mono text-[var(--fg-dim)]">
+                ({runningSessions.length})
+              </span>
+            )}
           </button>
         </div>
 
@@ -195,11 +240,34 @@ export function AppSidebar() {
               아직 프로젝트 없음
             </p>
           )}
+          {runningOnly && runningSessions.length === 0 && projects.length > 0 && (
+            <p className="px-3 py-6 text-xs text-[var(--fg-dim)] italic text-center">
+              지금 응답 중인 세션 없음
+            </p>
+          )}
           <ul className="space-y-0.5">
-            {projects.map((p) => {
-              const isOpen = expanded.has(p.id);
+            {(runningOnly
+              ? projects.filter((p) => runningSessions.some((r) => r.project_id === p.id))
+              : projects
+            ).map((p) => {
+              // In runningOnly mode every visible project is forced open so the
+              // user sees its running sessions without an extra click.
+              const isOpen = runningOnly || expanded.has(p.id);
               const isActive = activeProjectId === p.id;
-              const sessions = sessionsByProject[p.id] ?? [];
+              // In runningOnly mode, build sessions directly from the live
+              // running list so we don't need a lazy /sessions fetch first.
+              const sessions: IChatSession[] = runningOnly
+                ? runningSessions
+                    .filter((r) => r.project_id === p.id)
+                    .map((r) => ({
+                      id: r.session_id,
+                      project_id: r.project_id,
+                      title: r.title,
+                      model: null,
+                      created_at: '',
+                      updated_at: '',
+                    }))
+                : sessionsByProject[p.id] ?? [];
               return (
                 <li key={p.id}>
                   <div
