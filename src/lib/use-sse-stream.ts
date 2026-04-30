@@ -44,10 +44,16 @@ export function useSSEStream() {
             const lines = part.split('\n');
             let evt = 'message';
             let data = '';
+            let evtExplicit = false;
             for (const line of lines) {
-              if (line.startsWith('event: ')) evt = line.slice(7).trim();
+              // SSE comments (lines starting with ':') are heartbeats — skip.
+              if (line.startsWith(':')) continue;
+              if (line.startsWith('event: ')) { evt = line.slice(7).trim(); evtExplicit = true; }
               else if (line.startsWith('data: ')) data += line.slice(6);
             }
+            // Skip frames that carried no payload — heartbeat-only chunks land
+            // here and would otherwise pile up in the events array unused.
+            if (!evtExplicit && !data) continue;
             let parsed: unknown = data;
             try { parsed = JSON.parse(data); } catch { /* ignore */ }
             setEvents((prev) => [...prev, { event: evt, data: parsed }]);

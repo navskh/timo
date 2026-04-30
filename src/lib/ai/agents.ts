@@ -18,7 +18,10 @@ const claudeConfig: AgentConfig = {
     ...(streaming
       ? ['--output-format', 'stream-json', '--verbose']
       : ['--output-format', 'text']),
-    '--max-turns', String(maxTurns ?? 80),
+    // 80 was hitting the cap on long autonomous flows (notably /evolve and
+    // multi-step refactors). 500 lets those finish; runaway loops stop being
+    // handled by the limit anyway since the user can interrupt from the UI.
+    '--max-turns', String(maxTurns ?? 500),
     '-p', '-',
   ],
   buildEnv: () => {
