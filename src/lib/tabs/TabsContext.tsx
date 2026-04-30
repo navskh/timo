@@ -71,6 +71,21 @@ export function TabsProvider({ children }: { children: ReactNode }) {
     try { localStorage.setItem(STORAGE_KEY, JSON.stringify(tabs)); } catch { /* ignore */ }
   }, [tabs]);
 
+  // Sync tab title when a rename happens elsewhere (sidebar, header, etc.).
+  useEffect(() => {
+    const onRename = (e: Event) => {
+      const detail = (e as CustomEvent<{ session_id?: string; title?: string }>).detail;
+      if (!detail?.session_id || typeof detail.title !== 'string') return;
+      setTabsState((prev) =>
+        prev.map((t) =>
+          t.session_id === detail.session_id ? { ...t, title: detail.title as string } : t,
+        ),
+      );
+    };
+    window.addEventListener('timo:session-renamed', onRename);
+    return () => window.removeEventListener('timo:session-renamed', onRename);
+  }, []);
+
   const openTab = useCallback((tab: ITab) => {
     setTabsState((prev) => {
       const idx = prev.findIndex((t) => t.session_id === tab.session_id);

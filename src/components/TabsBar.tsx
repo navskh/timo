@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useTabs, type ITab } from '@/lib/tabs/TabsContext';
+import { InlineRename, renameSession } from './ui/InlineRename';
 
 interface IRunningStatus {
   running: Array<{ session_id: string; project_id: string; title: string }>;
@@ -23,6 +24,8 @@ export function TabsBar() {
   // We poll independently here because TabsBar can render on non-project pages
   // where AppSidebar's polling is decoupled (and we don't want to share state).
   const [runningIds, setRunningIds] = useState<Set<string>>(new Set());
+  // Which tab is currently being renamed inline. Double-click a tab title to enter.
+  const [editingId, setEditingId] = useState<string | null>(null);
 
   useEffect(() => {
     let stopped = false;
@@ -132,9 +135,28 @@ export function TabsBar() {
                 <span className="truncate text-[10px] mono text-[var(--fg-dim)]">
                   {t.project_name}
                 </span>
-                <span className={`truncate text-xs ${active ? 'font-medium' : ''}`}>
-                  {t.title}
-                </span>
+                {editingId === t.session_id ? (
+                  <InlineRename
+                    initial={t.title}
+                    onCommit={async (next) => {
+                      await renameSession(t.session_id, next);
+                      setEditingId(null);
+                    }}
+                    onCancel={() => setEditingId(null)}
+                    className="bg-[var(--surface-1)] border border-[var(--accent-border)] rounded px-1 py-px text-xs text-[var(--foreground)] outline-none focus:border-[var(--accent)] w-full"
+                  />
+                ) : (
+                  <span
+                    className={`truncate text-xs ${active ? 'font-medium' : ''}`}
+                    onDoubleClick={(e) => {
+                      e.stopPropagation();
+                      setEditingId(t.session_id);
+                    }}
+                    title="더블클릭으로 이름 바꾸기"
+                  >
+                    {t.title}
+                  </span>
+                )}
               </span>
               <button
                 type="button"

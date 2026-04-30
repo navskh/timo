@@ -8,6 +8,7 @@ import { NewProjectModal } from './NewProjectModal';
 import { ClaudeLimitsBar } from './ClaudeLimitsBar';
 import ThemePicker from './ThemePicker';
 import { confirm, toast } from './ui/dialogs';
+import { InlineRename, renameSession as renameSessionApi } from './ui/InlineRename';
 import pkg from '../../package.json';
 
 interface ISkillSummary {
@@ -33,6 +34,8 @@ export function AppSidebar() {
   // useful as a navigation filter.
   const [pinnedProjectIds, setPinnedProjectIds] = useState<Set<string>>(new Set());
   const [pinnedOnly, setPinnedOnly] = useState(false);
+  // Which session row is currently being renamed inline.
+  const [editingSessionId, setEditingSessionId] = useState<string | null>(null);
   const prevRunningRef = useRef<Map<string, string>>(new Map());
 
   // Hydrate pin state + filter preference from localStorage on mount.
@@ -141,11 +144,32 @@ export function AppSidebar() {
       if (activeProjectId) loadSessions(activeProjectId);
     };
     const onSkillsRefresh = () => loadSkills();
+    const onSessionRenamed = (e: Event) => {
+      const detail = (e as CustomEvent<{ session_id?: string; title?: string }>).detail;
+      if (!detail?.session_id || typeof detail.title !== 'string') return;
+      setSessionsByProject((prev) => {
+        const next: typeof prev = {};
+        let changed = false;
+        for (const [pid, list] of Object.entries(prev)) {
+          let listChanged = false;
+          const updated = list.map((s) => {
+            if (s.id !== detail.session_id) return s;
+            listChanged = true;
+            return { ...s, title: detail.title as string };
+          });
+          if (listChanged) changed = true;
+          next[pid] = listChanged ? updated : list;
+        }
+        return changed ? next : prev;
+      });
+    };
     window.addEventListener('timo:refresh-sidebar', onRefresh);
     window.addEventListener('timo:refresh-skills', onSkillsRefresh);
+    window.addEventListener('timo:session-renamed', onSessionRenamed);
     return () => {
       window.removeEventListener('timo:refresh-sidebar', onRefresh);
       window.removeEventListener('timo:refresh-skills', onSkillsRefresh);
+      window.removeEventListener('timo:session-renamed', onSessionRenamed);
     };
   }, [activeProjectId, loadProjects, loadSessions, loadSkills]);
 
@@ -338,23 +362,54 @@ export function AppSidebar() {
                                   : 'hover:bg-[var(--surface-3)]'
                               }`}
                             >
-                              <Link
-                                href={`/projects/${p.id}?s=${s.id}`}
-                                className={`pl-3 pr-1 py-1 text-[12px] flex-1 min-w-0 flex items-center gap-1.5 ${
-                                  isActiveSession
-                                    ? 'text-[var(--foreground)] font-medium'
-                                    : 'text-[var(--fg-muted)] group-hover/session:text-[var(--accent-soft)]'
-                                }`}
-                                title={isRunning ? `${s.title} — 응답 중` : s.title}
-                              >
-                                {isRunning && (
-                                  <span
-                                    className="shrink-0 w-1.5 h-1.5 rounded-full bg-[var(--accent)] animate-pulse"
-                                    aria-label="응답 중"
+                              {editingSessionId === s.id ? (
+                                <div className="pl-3 pr-1 py-1 flex-1 min-w-0 flex items-center gap-1.5">
+                                  {isRunning && (
+                                    <span
+                                      className="shrink-0 w-1.5 h-1.5 rounded-full bg-[var(--accent)] animate-pulse"
+                                      aria-label="응답 중"
+                                    />
+                                  )}
+                                  <InlineRename
+                                    initial={s.title}
+                                    onCommit={async (next) => {
+                                      await renameSessionApi(s.id, next);
+                                      setEditingSessionId(null);
+                                    }}
+                                    onCancel={() => setEditingSessionId(null)}
                                   />
-                                )}
-                                <span className="truncate flex-1">{s.title}</span>
-                              </Link>
+                                </div>
+                              ) : (
+                                <Link
+                                  href={`/projects/${p.id}?s=${s.id}`}
+                                  className={`pl-3 pr-1 py-1 text-[12px] flex-1 min-w-0 flex items-center gap-1.5 ${
+                                    isActiveSession
+                                      ? 'text-[var(--foreground)] font-medium'
+                                      : 'text-[var(--fg-muted)] group-hover/session:text-[var(--accent-soft)]'
+                                  }`}
+                                  title={isRunning ? `${s.title} — 응답 중` : `${s.title} (더블클릭으로 이름 바꾸기)`}
+                                  onDoubleClick={(e) => {
+                                    e.preventDefault();
+                                    setEditingSessionId(s.id);
+                                  }}
+                                >
+                                  {isRunning && (
+                                    <span
+                                      className="shrink-0 w-1.5 h-1.5 rounded-full bg-[var(--accent)] animate-pulse"
+                                      aria-label="응답 중"
+                                    />
+                                  )}
+                                  <span className="truncate flex-1">{s.title}</span>
+                                </Link>
+                              )}
+                              <button
+                                onClick={() => setEditingSessionId(s.id)}
+                                className="shrink-0 opacity-0 group-hover/session:opacity-100 text-[var(--fg-dim)] hover:text-[var(--accent)] transition px-1 py-1 text-[11px]"
+                                title="이름 바꾸기"
+                                aria-label="이름 바꾸기"
+                              >
+                                ✎
+                              </button>
                               <button
                                 onClick={() => deleteSession(p.id, s.id, s.title)}
                                 className="shrink-0 opacity-0 group-hover/session:opacity-100 text-[var(--fg-dim)] hover:text-[var(--danger)] transition px-1.5 py-1 text-[11px]"

@@ -119,12 +119,23 @@ export default function ProjectChatPage({ params }: { params: Promise<{ id: stri
         loadMessages(currentSessionId);
       }
     };
+    const onRenamed = (e: Event) => {
+      const detail = (e as CustomEvent<{ session_id?: string; title?: string }>).detail;
+      if (!detail?.session_id || typeof detail.title !== 'string') return;
+      setSessions((prev) =>
+        prev.map((s) =>
+          s.id === detail.session_id ? { ...s, title: detail.title as string } : s,
+        ),
+      );
+    };
     window.addEventListener('timo:session-finished', onFinished);
+    window.addEventListener('timo:session-renamed', onRenamed);
 
     return () => {
       stopped = true;
       clearInterval(intId);
       window.removeEventListener('timo:session-finished', onFinished);
+      window.removeEventListener('timo:session-renamed', onRenamed);
     };
   }, [currentSessionId, loadMessages]);
 
