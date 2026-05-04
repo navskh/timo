@@ -233,18 +233,35 @@ export async function runChatTurn(
     sink({ type: 'assistant-message-saved', message: assistantMsg });
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
+    // Detect interrupted runs across all the ways claude can exit when we
+    // signal it: a literal signal name in the message, the diagnostic format
+    // we added in v0.6.1 ("signal: SIGTERM"), or the well-known
+    // process-exit codes 128 + signum. claude usually catches SIGTERM and
+    // exits cleanly with code 143 — without 143 in this list we treated
+    // every interrupt as a hard error and dumped the entire stdout NDJSON
+    // tail into the message content, which then leaked into the next turn's
+    // prompt and broke the model.
     const interrupted =
       message.includes('SIGTERM') ||
+      message.includes('SIGINT') ||
+      message.includes('SIGKILL') ||
       message.includes('killed by signal') ||
-      message.includes('timed out');
+      message.includes('timed out') ||
+      /exited with code (143|137|130)\b/.test(message);
     assistantBlocks.push({
       kind: interrupted ? 'system' : 'error',
       content: interrupted ? '⏸ 사용자가 응답을 중단했어요' : message,
     });
+    // Keep the persisted `content` short so it doesn't pollute future prompts.
+    // The full diagnostic still lives in `blocks_json` for the UI to render;
+    // it just isn't stuffed into `## You (previous turn)\n{...}` later on.
+    const persistedContent = interrupted
+      ? '(중단됨)'
+      : `(error) ${message.split('\n')[0].slice(0, 200)}`;
     const assistantMsg = addMessage({
       session_id: sessionId,
       role: 'assistant',
-      content: interrupted ? '(중단됨)' : `(error) ${message}`,
+      content: persistedContent,
       blocks: assistantBlocks,
     });
     if (!interrupted) sink({ type: 'error', message });
