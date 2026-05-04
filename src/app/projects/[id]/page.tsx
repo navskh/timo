@@ -240,14 +240,38 @@ export default function ProjectChatPage({ params }: { params: Promise<{ id: stri
     [sessions, currentSessionId],
   );
 
+  // Tracks the in-flight start() promise so a new send() while running can
+  // wait for it to drain before kicking off the next one. Without this the
+  // old SSE handler is still emitting 'done'/save events when the new one
+  // begins and the two collide (duplicate user messages, lost deltas).
+  const inFlightRef = useRef<Promise<void> | null>(null);
+
   async function send(text: string, attachments: IAttachment[] = []) {
-    if (!currentSessionId || running) return;
+    if (!currentSessionId) return;
     if (!text.trim() && attachments.length === 0) return;
-    await start(`/api/sessions/${currentSessionId}/send`, {
+
+    // Interrupt-and-send: typing during a running turn and pressing Enter
+    // SIGTERMs the current claude process, waits for the SSE 'done' to land
+    // (so chat-state's markIdle/clearProcess have run), then starts the new
+    // turn. We don't await the interrupt fetch — it's idempotent and the
+    // SSE 'done' is what we actually need.
+    if (running && inFlightRef.current) {
+      void fetch(`/api/sessions/${currentSessionId}/interrupt`, { method: 'POST' })
+        .catch(() => { /* ignore — server might be already done */ });
+      try {
+        await inFlightRef.current;
+      } catch { /* swallow — abort/error from interrupt is expected */ }
+    }
+
+    const p = start(`/api/sessions/${currentSessionId}/send`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ text, attachments }),
     });
+    inFlightRef.current = p;
+    try { await p; } finally {
+      if (inFlightRef.current === p) inFlightRef.current = null;
+    }
   }
 
   async function stopCurrent() {

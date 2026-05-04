@@ -168,8 +168,10 @@ export function Composer({ running, onSend, onStop }: Props) {
   }
 
   function submit() {
-    if (running || uploading > 0) return;
+    if (uploading > 0) return;
     if (!value.trim() && attachments.length === 0) return;
+    // When running, the parent's onSend interrupts the in-flight turn first
+    // and then sends the new message. Composer just hands the payload over.
     onSend(value, attachments);
     setValue('');
     setAttachments([]);
@@ -200,18 +202,13 @@ export function Composer({ running, onSend, onStop }: Props) {
     }
 
     if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
-      // While a turn is streaming, Enter is reserved for a future release of
-      // the interrupt-and-send flow — for now, guide the user to stop first.
-      if (running) {
-        e.preventDefault();
-        return;
-      }
       e.preventDefault();
       submit();
     }
   }
 
-  const canSend = !running && uploading === 0 && (value.trim() || attachments.length > 0);
+  const hasContent = value.trim().length > 0 || attachments.length > 0;
+  const canSend = uploading === 0 && hasContent;
 
   return (
     <div
@@ -316,14 +313,14 @@ export function Composer({ running, onSend, onStop }: Props) {
           onPaste={handlePaste}
           placeholder={
             running
-              ? '응답 중이에요 — 중단하려면 오른쪽 ⏹ 버튼. 다음 메시지 미리 타이핑해두셔도 돼요.'
+              ? '응답 중 — Enter 치면 응답 중단하고 새 메시지 보냄. ⏹ 버튼은 그냥 중단만.'
               : '무엇을 부탁할까요?  (Enter 전송 · Shift+Enter 줄바꿈 · / 스킬 · 이미지 드래그/붙여넣기)'
           }
           rows={2}
           className="flex-1 bg-[var(--surface-2)] border border-[var(--border)] focus:border-[var(--accent)] rounded-lg px-3.5 py-2.5 text-sm resize-none outline-none transition-colors"
           style={{ fontFamily: 'inherit' }}
         />
-        {running ? (
+        {running && !hasContent ? (
           <button
             type="button"
             onClick={() => onStop?.()}
@@ -338,8 +335,9 @@ export function Composer({ running, onSend, onStop }: Props) {
             onClick={submit}
             disabled={!canSend}
             className="h-[60px] px-5 bg-[var(--accent)] hover:bg-[var(--accent-strong)] text-[var(--accent-on)] disabled:opacity-40 disabled:cursor-not-allowed rounded-lg text-sm font-medium transition shrink-0"
+            title={running ? '응답 중단 후 새 메시지 전송' : '전송'}
           >
-            {uploading > 0 ? '업로드' : '전송'}
+            {uploading > 0 ? '업로드' : running ? '⏹ + 전송' : '전송'}
           </button>
         )}
       </div>
