@@ -1,7 +1,9 @@
 'use client';
 
+import { useRef, useState, type AnchorHTMLAttributes, type HTMLAttributes } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import rehypeHighlight from 'rehype-highlight';
 import type { ChatBlock, ChatRole } from '@/types';
 
 interface Props {
@@ -138,11 +140,87 @@ function buildClusters(blocks: ChatBlock[]): Cluster[] {
   return out;
 }
 
+/** Force markdown links to open in the system browser instead of navigating
+ *  the Tauri webview itself. `target="_blank"` is enough — Tauri intercepts
+ *  the new-window request and hands the URL off to the OS default browser. */
+function ExternalLink({ children, href, ...rest }: AnchorHTMLAttributes<HTMLAnchorElement>) {
+  const isExternal = !!href && /^https?:\/\//i.test(href);
+  if (!isExternal) {
+    return <a href={href} {...rest}>{children}</a>;
+  }
+  return (
+    <a
+      href={href}
+      target="_blank"
+      rel="noopener noreferrer"
+      {...rest}
+    >
+      {children}
+    </a>
+  );
+}
+
+/** Render a fenced code block with a hover-revealed copy button + a small
+ *  language tag in the corner. The block ref's innerText preserves whatever
+ *  rehype-highlight wrapped the tokens into, so we copy the visible code
+ *  (not the highlighted HTML). */
+function CodeBlock({ children, ...rest }: HTMLAttributes<HTMLPreElement>) {
+  const ref = useRef<HTMLPreElement>(null);
+  const [copied, setCopied] = useState(false);
+
+  // Pull the language tag out of the inner <code className="language-x">.
+  let lang = '';
+  if (children && typeof children === 'object' && 'props' in children) {
+    const inner = children as { props?: { className?: string } };
+    const match = inner.props?.className?.match(/language-([a-z0-9+#-]+)/i);
+    if (match) lang = match[1];
+  }
+
+  const onCopy = async () => {
+    if (!ref.current) return;
+    try {
+      await navigator.clipboard.writeText(ref.current.innerText);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    } catch { /* ignore */ }
+  };
+
+  return (
+    <div className="relative group/code my-3">
+      {lang && (
+        <span className="absolute top-2 left-3 text-[10px] mono text-[var(--fg-dim)] uppercase tracking-wider pointer-events-none">
+          {lang}
+        </span>
+      )}
+      <button
+        type="button"
+        onClick={onCopy}
+        className={`absolute top-1.5 right-1.5 px-2 py-0.5 rounded text-[10px] mono transition border ${
+          copied
+            ? 'opacity-100 text-[var(--accent-soft)] border-[var(--accent-border)] bg-[var(--accent-bg)]'
+            : 'opacity-0 group-hover/code:opacity-100 text-[var(--fg-muted)] border-[var(--border)] bg-[var(--surface-2)] hover:text-[var(--foreground)] hover:border-[var(--accent-border)]'
+        }`}
+        title="코드 복사"
+        aria-label="코드 복사"
+      >
+        {copied ? '✓ 복사됨' : '복사'}
+      </button>
+      <pre ref={ref} {...rest}>{children}</pre>
+    </div>
+  );
+}
+
 function ClusterRenderer({ cluster }: { cluster: Cluster }) {
   if (cluster.kind === 'text') {
     return (
       <div className="md-body text-[15px] text-[var(--foreground)] leading-[1.75] max-w-[740px]">
-        <ReactMarkdown remarkPlugins={[remarkGfm]}>{cluster.block.content}</ReactMarkdown>
+        <ReactMarkdown
+          remarkPlugins={[remarkGfm]}
+          rehypePlugins={[[rehypeHighlight, { detect: true, ignoreMissing: true }]]}
+          components={{ a: ExternalLink, pre: CodeBlock }}
+        >
+          {cluster.block.content}
+        </ReactMarkdown>
       </div>
     );
   }

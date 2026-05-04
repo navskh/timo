@@ -1,5 +1,10 @@
 @import "tailwindcss";
 
+/* Syntax highlighting for fenced code blocks. atom-one-dark sits well on
+   surface-1; the Slate (light) theme override below swaps to a light
+   palette so tokens stay readable on a near-white background. */
+@import "highlight.js/styles/atom-one-dark.css";
+
 /* Default theme tokens — Midnight (dark + violet).
    Other themes override these via [data-theme="..."] below. */
 :root, [data-theme="midnight"] {
@@ -234,6 +239,56 @@ button:disabled { cursor: not-allowed; }
 .mono {
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, "Courier New", monospace;
 }
+
+/* highlight.js color override for the Slate (light) theme. atom-one-dark's
+   pale token colors wash out on a near-white surface, so swap to atom-one-
+   light-ish hues. Other dark themes inherit atom-one-dark from the import
+   above unchanged. */
+[data-theme="slate"] .hljs {
+  background: transparent;
+  color: #383a42;
+}
+[data-theme="slate"] .hljs-comment,
+[data-theme="slate"] .hljs-quote {
+  color: #a0a1a7;
+  font-style: italic;
+}
+[data-theme="slate"] .hljs-keyword,
+[data-theme="slate"] .hljs-selector-tag,
+[data-theme="slate"] .hljs-section,
+[data-theme="slate"] .hljs-doctag,
+[data-theme="slate"] .hljs-name,
+[data-theme="slate"] .hljs-strong {
+  color: #a626a4;
+}
+[data-theme="slate"] .hljs-string,
+[data-theme="slate"] .hljs-attr,
+[data-theme="slate"] .hljs-template-tag,
+[data-theme="slate"] .hljs-template-variable,
+[data-theme="slate"] .hljs-addition {
+  color: #50a14f;
+}
+[data-theme="slate"] .hljs-number,
+[data-theme="slate"] .hljs-literal,
+[data-theme="slate"] .hljs-variable,
+[data-theme="slate"] .hljs-meta,
+[data-theme="slate"] .hljs-link {
+  color: #986801;
+}
+[data-theme="slate"] .hljs-title,
+[data-theme="slate"] .hljs-built_in,
+[data-theme="slate"] .hljs-class .hljs-title {
+  color: #4078f2;
+}
+[data-theme="slate"] .hljs-tag,
+[data-theme="slate"] .hljs-symbol,
+[data-theme="slate"] .hljs-selector-id,
+[data-theme="slate"] .hljs-selector-class,
+[data-theme="slate"] .hljs-attribute {
+  color: #e45649;
+}
+[data-theme="slate"] .hljs-emphasis { font-style: italic; }
+[data-theme="slate"] .hljs-deletion { color: #e45649; }
 
 /* Scrollbar styling — pulls colors from theme tokens so it follows the theme.
    Note: do NOT set `scrollbar-width: thin` — modern Chromium/WebKit treats it
