@@ -36,7 +36,10 @@ export function AppSidebar() {
   const [pinnedOnly, setPinnedOnly] = useState(false);
   // Which session row is currently being renamed inline.
   const [editingSessionId, setEditingSessionId] = useState<string | null>(null);
-  const prevRunningRef = useRef<Map<string, string>>(new Map());
+  // Snapshot of running sessions from the previous poll. Stores the full info
+  // (title + project_id) so the finish event can carry enough for OS-level
+  // notifications and direct navigation.
+  const prevRunningRef = useRef<Map<string, { project_id: string; title: string }>>(new Map());
 
   // Hydrate pin state + filter preference from localStorage on mount.
   useEffect(() => {
@@ -103,16 +106,20 @@ export function AppSidebar() {
         if (stopped) return;
         const nextList: Array<{ session_id: string; project_id: string; title: string }> =
           r.running ?? [];
-        const nextMap = new Map<string, string>();
-        for (const s of nextList) nextMap.set(s.session_id, s.title);
+        const nextMap = new Map<string, { project_id: string; title: string }>();
+        for (const s of nextList) {
+          nextMap.set(s.session_id, { project_id: s.project_id, title: s.title });
+        }
 
         // Completion detection: was running, now not.
         const prev = prevRunningRef.current;
-        for (const [sid, title] of prev) {
+        for (const [sid, info] of prev) {
           if (!nextMap.has(sid)) {
-            toast.success(`응답 완료: ${title}`);
+            toast.success(`응답 완료: ${info.title}`);
             window.dispatchEvent(
-              new CustomEvent('timo:session-finished', { detail: { session_id: sid } }),
+              new CustomEvent('timo:session-finished', {
+                detail: { session_id: sid, project_id: info.project_id, title: info.title },
+              }),
             );
           }
         }

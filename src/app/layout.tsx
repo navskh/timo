@@ -9,6 +9,7 @@ import { DEFAULT_THEME_ID, getThemeById } from '@/lib/theme/themes';
 import { readPreferences } from '@/lib/preferences';
 import { TabsProvider } from '@/lib/tabs/TabsContext';
 import { TabsBar } from '@/components/TabsBar';
+import { NotificationsClient } from '@/components/NotificationsClient';
 
 // Tauri spawns the Next sidecar on a fresh ephemeral port every launch, so
 // browser-origin storage (localStorage / cookies) gets wiped between sessions.
@@ -130,6 +131,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             </div>
             <DialogHost />
             <UpdaterClient />
+            <NotificationsClient />
           </TabsProvider>
         </ThemeProvider>
       </body>
