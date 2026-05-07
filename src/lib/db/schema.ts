@@ -97,4 +97,10 @@ export function initSchema(db: any): void {
     // (which deletes unmatched 'ai' tasks) start cleaning them up.
     db.exec("ALTER TABLE tasks ADD COLUMN source TEXT NOT NULL DEFAULT 'ai'");
   }
+
+  if (!messageCols.some((c) => c.name === 'archived')) {
+    // Compact-archived messages are kept in the table but excluded from the
+    // default load + future prompt context. SQLite stores booleans as INT.
+    db.exec("ALTER TABLE chat_messages ADD COLUMN archived INTEGER NOT NULL DEFAULT 0");
+  }
 }

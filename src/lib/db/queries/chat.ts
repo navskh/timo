@@ -63,12 +63,41 @@ export function deleteSession(id: string): void {
   getDb().prepare('DELETE FROM chat_sessions WHERE id = ?').run(id);
 }
 
-export function getMessages(sessionId: string): IChatMessage[] {
+/**
+ * Default returns only non-archived messages — that's what UI + prompt builder
+ * want. Pass `{ includeArchived: true }` for the "이전 대화 펼치기" view that
+ * surfaces messages the user once compacted away.
+ */
+export function getMessages(
+  sessionId: string,
+  opts?: { includeArchived?: boolean },
+): IChatMessage[] {
+  const where = opts?.includeArchived
+    ? 'WHERE session_id = ?'
+    : 'WHERE session_id = ? AND archived = 0';
   return getDb()
-    .prepare(
-      'SELECT * FROM chat_messages WHERE session_id = ? ORDER BY created_at ASC, id ASC',
-    )
+    .prepare(`SELECT * FROM chat_messages ${where} ORDER BY created_at ASC, id ASC`)
     .all(sessionId) as IChatMessage[];
+}
+
+/** Count of archived messages — drives the "이전 대화 펼치기" disclosure. */
+export function getArchivedCount(sessionId: string): number {
+  const r = getDb()
+    .prepare(
+      'SELECT COUNT(*) AS n FROM chat_messages WHERE session_id = ? AND archived = 1',
+    )
+    .get(sessionId) as { n: number } | undefined;
+  return r?.n ?? 0;
+}
+
+/** Mark a batch of message IDs archived in one transaction. Used by /compact. */
+export function archiveMessages(ids: string[]): void {
+  if (ids.length === 0) return;
+  const db = getDb();
+  const stmt = db.prepare('UPDATE chat_messages SET archived = 1 WHERE id = ?');
+  db.transaction(() => {
+    for (const id of ids) stmt.run(id);
+  })();
 }
 
 export function addMessage(input: {

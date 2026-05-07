@@ -71,6 +71,8 @@ export interface IChatMessage {
   blocks_json: string;
   /** JSON-encoded array of follow-up prompt suggestions (assistant messages only). */
   suggestions_json: string;
+  /** 1 = compacted away by `/compact`. Hidden by default; user can expand. */
+  archived: number;
   created_at: string;
 }
 

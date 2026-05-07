@@ -47,9 +47,17 @@ export default function ProjectChatPage({ params }: { params: Promise<{ id: stri
     return list;
   }, [id]);
 
-  const loadMessages = useCallback(async (sid: string) => {
-    const r = await fetch(`/api/sessions/${sid}/messages`).then((r) => r.json());
+  const [archivedCount, setArchivedCount] = useState(0);
+  const [archivesExpanded, setArchivesExpanded] = useState(false);
+  const [compacting, setCompacting] = useState(false);
+
+  const loadMessages = useCallback(async (sid: string, opts?: { includeArchived?: boolean }) => {
+    const url = opts?.includeArchived
+      ? `/api/sessions/${sid}/messages?include=archived`
+      : `/api/sessions/${sid}/messages`;
+    const r = await fetch(url).then((r) => r.json());
     setMessages(r.messages ?? []);
+    setArchivedCount(typeof r.archivedCount === 'number' ? r.archivedCount : 0);
   }, []);
 
   const loadTasks = useCallback(async () => {
@@ -92,6 +100,7 @@ export default function ProjectChatPage({ params }: { params: Promise<{ id: stri
     reset();
     loadMessages(currentSessionId);
     setStreamingBlocks(null);
+    setArchivesExpanded(false);
   }, [currentSessionId, loadMessages, reset]);
 
   // Poll the current session's run status every 2s. Drives externalRunning
@@ -367,6 +376,52 @@ export default function ProjectChatPage({ params }: { params: Promise<{ id: stri
     }
   }
 
+  async function compactSession() {
+    if (!currentSessionId || compacting) return;
+    if (running || externalRunning) {
+      toast.error('응답 중에는 요약할 수 없어요. 먼저 ⏹로 중단하세요.');
+      return;
+    }
+    if (messages.length < 6) {
+      toast.info('아직 요약할 만큼 길지 않아요 (최소 6개 메시지 필요).');
+      return;
+    }
+    const ok = await confirm({
+      title: '대화 요약 (compact)',
+      message:
+        `오래된 메시지를 한 단락으로 요약하고 최근 5개만 남겨요.\n` +
+        `토큰·로딩·생성 시간이 줄어듭니다.\n\n` +
+        `요약된 메시지는 삭제되지 않고, "이전 대화 펼치기"로 다시 볼 수 있어요.`,
+      confirmText: '요약',
+    });
+    if (!ok) return;
+    setCompacting(true);
+    try {
+      const res = await fetch(`/api/sessions/${currentSessionId}/compact`, {
+        method: 'POST',
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        toast.error(data.error ?? '요약 실패');
+        return;
+      }
+      toast.success(`📦 ${data.archivedCount}개 메시지 → 1개 요약 (최근 ${data.keptCount}개 유지)`);
+      await loadMessages(currentSessionId);
+      setArchivesExpanded(false);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : String(err));
+    } finally {
+      setCompacting(false);
+    }
+  }
+
+  async function toggleArchives() {
+    if (!currentSessionId) return;
+    const next = !archivesExpanded;
+    setArchivesExpanded(next);
+    await loadMessages(currentSessionId, { includeArchived: next });
+  }
+
   async function deleteCurrentSession() {
     if (!currentSessionId) return;
     const ok = await confirm({
@@ -456,6 +511,16 @@ export default function ProjectChatPage({ params }: { params: Promise<{ id: stri
             <div className="w-px h-5 bg-[var(--border)] mx-1" />
             {currentSessionId && (
               <button
+                onClick={compactSession}
+                disabled={compacting || running || externalRunning}
+                className="text-xs text-[var(--fg-dim)] hover:text-[var(--accent-soft)] px-2 py-1 rounded hover:bg-[var(--surface-3)] disabled:opacity-40 disabled:cursor-not-allowed"
+                title="오래된 메시지를 요약해서 토큰·로딩 시간 줄이기"
+              >
+                {compacting ? '📦 요약 중…' : '📦 요약'}
+              </button>
+            )}
+            {currentSessionId && (
+              <button
                 onClick={deleteCurrentSession}
                 className="text-xs text-[var(--fg-dim)] hover:text-[var(--danger)] px-2 py-1 rounded hover:bg-[var(--surface-3)]"
                 title="현재 대화 삭제"
@@ -468,6 +533,23 @@ export default function ProjectChatPage({ params }: { params: Promise<{ id: stri
 
         {/* Messages */}
         <div ref={scrollRef} className="flex-1 overflow-y-auto px-6 py-8 space-y-8">
+          {/* Compacted messages disclosure: lives at the top of history so the
+              archive surfaces in chronological order when expanded. */}
+          {(archivedCount > 0 || archivesExpanded) && (
+            <div className="max-w-[740px] mx-auto">
+              <button
+                onClick={toggleArchives}
+                className="w-full flex items-center gap-2 px-3 py-2 rounded-lg border border-dashed border-[var(--border)] text-[11px] mono text-[var(--fg-muted)] hover:border-[var(--accent-border)] hover:text-[var(--accent-soft)] hover:bg-[var(--surface-2)] transition"
+              >
+                <span>{archivesExpanded ? '▾' : '▸'}</span>
+                <span>
+                  {archivesExpanded
+                    ? '이전 대화 접기'
+                    : `이전 대화 ${archivedCount}개 펼치기 (요약된 원본)`}
+                </span>
+              </button>
+            </div>
+          )}
           {messages.length === 0 && !streamingBlocks && (
             <div className="max-w-xl mx-auto text-center mt-16">
               <div className="w-14 h-14 mx-auto mb-4 rounded-2xl bg-[var(--accent)] flex items-center justify-center shadow-lg shadow-black/40">

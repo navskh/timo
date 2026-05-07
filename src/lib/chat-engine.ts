@@ -93,6 +93,10 @@ function buildPrompt(
         parts.push(`\n## User\n${m.content}`);
       } else if (m.role === 'assistant' && m.content) {
         parts.push(`\n## You (previous turn)\n${m.content}`);
+      } else if (m.role === 'system' && m.content) {
+        // Compact-generated summary of older turns. Treat it as authoritative
+        // context for everything that came before the live window.
+        parts.push(`\n## Earlier conversation (compacted)\n${m.content}`);
       }
     }
   }
