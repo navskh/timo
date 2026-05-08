@@ -45,9 +45,12 @@ export function syncTodos(projectId: string, todos: TodoInput[]): void {
   if (!todos) return;
   const db = getDb();
 
+  // Only consider live (non-soft-deleted) rows. Anything in 보관함 stays
+  // archived even if Claude's TodoWrite happens to re-add the same title — a
+  // separate restore action is required, intentionally.
   const existing = db
     .prepare(
-      'SELECT id, title, status, source, sort_order FROM tasks WHERE project_id = ?',
+      'SELECT id, title, status, source, sort_order FROM tasks WHERE project_id = ? AND deleted_at IS NULL',
     )
     .all(projectId) as Array<{
       id: string;
@@ -79,7 +82,9 @@ export function syncTodos(projectId: string, todos: TodoInput[]): void {
   const update = db.prepare(
     `UPDATE tasks SET status = ?, updated_at = datetime('now') WHERE id = ?`,
   );
-  const remove = db.prepare(`DELETE FROM tasks WHERE id = ?`);
+  // Prune via soft delete so users can recover an AI-pruned task from 보관함
+  // if it turns out to still be relevant.
+  const remove = db.prepare(`UPDATE tasks SET deleted_at = datetime('now') WHERE id = ?`);
 
   // Track which existing AI tasks the incoming TodoWrite still mentions; the
   // rest get pruned at the end of the transaction.

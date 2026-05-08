@@ -103,4 +103,12 @@ export function initSchema(db: any): void {
     // default load + future prompt context. SQLite stores booleans as INT.
     db.exec("ALTER TABLE chat_messages ADD COLUMN archived INTEGER NOT NULL DEFAULT 0");
   }
+
+  if (!taskCols.some((c) => c.name === 'deleted_at')) {
+    // Soft-delete column. NULL = active, ISO timestamp = moved to archive
+    // (보관함). All existing reads (getTasksByProject, todo-sync) gain the
+    // `deleted_at IS NULL` filter so soft-deleted rows stay invisible until
+    // explicitly requested by the archive view.
+    db.exec("ALTER TABLE tasks ADD COLUMN deleted_at TEXT");
+  }
 }

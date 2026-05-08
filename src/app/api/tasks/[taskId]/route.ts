@@ -1,6 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { ensureDb } from '@/lib/db';
-import { getTask, updateTask, deleteTask } from '@/lib/db/queries/tasks';
+import {
+  getTask,
+  updateTask,
+  softDeleteTask,
+  hardDeleteTask,
+} from '@/lib/db/queries/tasks';
 
 type Ctx = { params: Promise<{ taskId: string }> };
 
@@ -21,9 +26,15 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
   return NextResponse.json({ task });
 }
 
-export async function DELETE(_req: NextRequest, { params }: Ctx) {
+/**
+ * Default DELETE soft-deletes (moves to 보관함). `?hard=1` is reserved for the
+ * archive view's "영구 삭제" button — physically removes the row.
+ */
+export async function DELETE(req: NextRequest, { params }: Ctx) {
   await ensureDb();
   const { taskId } = await params;
-  deleteTask(taskId);
-  return NextResponse.json({ ok: true });
+  const hard = req.nextUrl.searchParams.get('hard') === '1';
+  if (hard) hardDeleteTask(taskId);
+  else softDeleteTask(taskId);
+  return NextResponse.json({ ok: true, mode: hard ? 'hard' : 'soft' });
 }

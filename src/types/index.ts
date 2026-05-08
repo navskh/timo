@@ -26,6 +26,8 @@ export interface ITask {
    *  'user' = added manually via the panel; never deleted by sync logic. */
   source: TaskSource;
   sort_order: number;
+  /** ISO timestamp when the user soft-deleted (=> moved to 보관함). NULL = active. */
+  deleted_at: string | null;
   created_at: string;
   updated_at: string;
 }

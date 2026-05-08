@@ -255,6 +255,19 @@ export function AppSidebar() {
           </button>
         </div>
 
+        {/* Global todos palette opener — also bound to Cmd/Ctrl+Shift+T. */}
+        <div className="px-3 pt-1.5 pb-1">
+          <button
+            onClick={() => window.dispatchEvent(new Event('timo:open-todos'))}
+            className="w-full flex items-center justify-center gap-1.5 px-2 py-1 rounded-md text-[11px] text-[var(--fg-muted)] hover:text-[var(--foreground)] hover:bg-[var(--surface-3)] border border-transparent hover:border-[var(--border)] transition"
+            title="전체 할 일 (⌘⇧T)"
+          >
+            <span aria-hidden>✓</span>
+            <span>전체 할 일</span>
+            <span className="ml-auto text-[10px] mono text-[var(--fg-dim)]">⌘⇧T</span>
+          </button>
+        </div>
+
         {/* Filter: show only projects the user has pinned as "active focus".
             Pin/unpin via the ★ button on each project row below. */}
         <div className="px-3 pt-1.5 pb-2">
