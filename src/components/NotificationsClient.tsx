@@ -4,30 +4,73 @@ import { useEffect, useRef } from 'react';
 
 /**
  * Fires a native OS notification when an assistant turn finishes in a session
- * the user isn't currently watching. Hooks into the `timo:session-finished`
- * event that AppSidebar's polling already dispatches.
+ * the user isn't currently watching.
  *
- * Suppression rules:
- *  - Window is focused AND the URL ?s= matches the finished session → silent
- *    (user is already looking at the result).
- *  - Permission not granted → silent (we ask once on mount; user can grant
- *    later via OS settings).
+ * Path A (Tauri production): use @tauri-apps/plugin-notification so macOS
+ *   registers TIMO under 시스템 설정 → 알림 and the bundle id receives focus
+ *   on click. The web Notification API alone in Tauri 2's WebKit doesn't
+ *   surface to the notification center.
  *
- * Click on the notification focuses the window and navigates to that
- * session's URL via a soft history change so React Router picks it up.
+ * Path B (dev browser, or older builds without the plugin): fall back to the
+ *   browser's `Notification` constructor.
+ *
+ * Suppression rules either way: silent when the window is focused AND the
+ *   URL ?s= matches the finished session.
  */
 export function NotificationsClient() {
-  const requestedRef = useRef(false);
+  const initRef = useRef(false);
 
   useEffect(() => {
-    if (typeof window === 'undefined' || typeof Notification === 'undefined') return;
+    if (initRef.current) return;
+    initRef.current = true;
 
-    // Ask for permission once. Browsers allow requestPermission() at any time
-    // in modern Chromium/WebKit, no user-gesture dance needed.
-    if (Notification.permission === 'default' && !requestedRef.current) {
-      requestedRef.current = true;
-      Notification.requestPermission().catch(() => { /* user dismissed */ });
+    const isTauri = typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window;
+    let send: (title: string, body: string, sid: string) => void = () => { /* no-op */ };
+
+    async function setupTauri() {
+      try {
+        const mod = await import('@tauri-apps/plugin-notification');
+        let granted = await mod.isPermissionGranted();
+        if (!granted) {
+          const next = await mod.requestPermission();
+          granted = next === 'granted';
+        }
+        if (!granted) return;
+        send = (title, body) => {
+          // Tauri's sendNotification doesn't expose a click callback — the OS
+          // will focus the bundle on click via app-level routing. We rely on
+          // the user clicking back into TIMO; no extra wiring required.
+          mod.sendNotification({ title, body });
+        };
+      } catch (err) {
+        // Plugin not available (older build) — silently fall back to web API.
+        // eslint-disable-next-line no-console
+        console.warn('[NotificationsClient] tauri plugin unavailable, falling back', err);
+        setupWeb();
+      }
     }
+
+    function setupWeb() {
+      if (typeof Notification === 'undefined') return;
+      if (Notification.permission === 'default') {
+        Notification.requestPermission().catch(() => { /* user dismissed */ });
+      }
+      send = (title, body, sid) => {
+        if (Notification.permission !== 'granted') return;
+        const n = new Notification(title, {
+          body,
+          icon: '/icon.svg',
+          tag: `timo-session-${sid}`,
+        });
+        n.onclick = () => {
+          window.focus();
+          n.close();
+        };
+      };
+    }
+
+    if (isTauri) void setupTauri();
+    else setupWeb();
 
     const onFinished = (e: Event) => {
       const detail = (e as CustomEvent<{
@@ -36,34 +79,18 @@ export function NotificationsClient() {
         title?: string;
       }>).detail;
       if (!detail?.session_id) return;
-      if (Notification.permission !== 'granted') return;
 
-      // Don't notify if the user is already looking at this session.
       const urlSid = new URL(window.location.href).searchParams.get('s');
-      const focused = typeof document !== 'undefined' && !document.hidden && document.hasFocus();
+      const focused =
+        typeof document !== 'undefined' && !document.hidden && document.hasFocus();
       if (focused && urlSid === detail.session_id) return;
 
-      const n = new Notification('TIMO 응답 완료', {
-        body: detail.title || '대화에서 응답이 완료되었습니다.',
-        icon: '/icon.svg',
-        // tag dedupes — a second finish for the same session replaces the
-        // existing notification instead of stacking another one.
-        tag: `timo-session-${detail.session_id}`,
-      });
-
-      n.onclick = () => {
-        window.focus();
-        if (detail.project_id) {
-          // Use history.pushState + popstate so Next router intercepts and
-          // navigates without a full page reload.
-          const target = `/projects/${detail.project_id}?s=${detail.session_id}`;
-          window.history.pushState({}, '', target);
-          window.dispatchEvent(new PopStateEvent('popstate'));
-        }
-        n.close();
-      };
+      send(
+        'TIMO 응답 완료',
+        detail.title || '대화에서 응답이 완료되었습니다.',
+        detail.session_id,
+      );
     };
-
     window.addEventListener('timo:session-finished', onFinished);
     return () => window.removeEventListener('timo:session-finished', onFinished);
   }, []);

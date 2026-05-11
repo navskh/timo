@@ -57,6 +57,10 @@ pub fn run() {
     .plugin(tauri_plugin_shell::init())
     .plugin(tauri_plugin_process::init())
     .plugin(tauri_plugin_updater::Builder::new().build())
+    // Native notification plugin — bridges to macOS Notification Center so
+    // TIMO actually shows up in 시스템 설정 → 알림 (Web Notification API
+    // alone doesn't register the app in Tauri 2 webview).
+    .plugin(tauri_plugin_notification::init())
     .invoke_handler(tauri::generate_handler![check_update, install_update])
     .setup(|app| {
       if cfg!(debug_assertions) {
