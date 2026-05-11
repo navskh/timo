@@ -10,10 +10,10 @@ export async function POST(_req: NextRequest, { params }: Ctx) {
   await ensureDb();
   const { sid } = await params;
   try {
-    const suggestions = await generateSuggestions(sid);
-    return NextResponse.json({ suggestions });
+    const result = await generateSuggestions(sid);
+    return NextResponse.json(result);
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
-    return NextResponse.json({ error: message, suggestions: [] }, { status: 500 });
+    return NextResponse.json({ error: message, choices: [], suggestions: [] }, { status: 500 });
   }
 }

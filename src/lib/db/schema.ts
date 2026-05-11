@@ -104,6 +104,13 @@ export function initSchema(db: any): void {
     db.exec("ALTER TABLE chat_messages ADD COLUMN archived INTEGER NOT NULL DEFAULT 0");
   }
 
+  if (!messageCols.some((c) => c.name === 'choices_json')) {
+    // When the assistant ends with a "pick A or B" question, the suggest
+    // engine extracts the answer strings into this column so the UI can
+    // render them as immediate-send buttons.
+    db.exec("ALTER TABLE chat_messages ADD COLUMN choices_json TEXT NOT NULL DEFAULT '[]'");
+  }
+
   if (!taskCols.some((c) => c.name === 'deleted_at')) {
     // Soft-delete column. NULL = active, ISO timestamp = moved to archive
     // (보관함). All existing reads (getTasksByProject, todo-sync) gain the

@@ -255,6 +255,11 @@ export default function ProjectChatPage({ params }: { params: Promise<{ id: stri
   // begins and the two collide (duplicate user messages, lost deltas).
   const inFlightRef = useRef<Promise<void> | null>(null);
 
+  // Ref kept in sync with the latest `send` so the event listener below can
+  // always invoke the current closure (which captures the live currentSessionId,
+  // running flag, etc.) without needing send in its deps.
+  const sendRef = useRef<((text: string) => void) | null>(null);
+
   async function send(text: string, attachments: IAttachment[] = []) {
     if (!currentSessionId) return;
     if (!text.trim() && attachments.length === 0) return;
@@ -282,6 +287,18 @@ export default function ProjectChatPage({ params }: { params: Promise<{ id: stri
       if (inFlightRef.current === p) inFlightRef.current = null;
     }
   }
+
+  // Wire the choice-button event from ChatMessage's <Choices /> to send().
+  sendRef.current = (text: string) => { void send(text); };
+  useEffect(() => {
+    const onSendChoice = (e: Event) => {
+      const detail = (e as CustomEvent<{ text?: string }>).detail;
+      const text = detail?.text;
+      if (text && sendRef.current) sendRef.current(text);
+    };
+    window.addEventListener('timo:send-choice', onSendChoice);
+    return () => window.removeEventListener('timo:send-choice', onSendChoice);
+  }, []);
 
   async function stopCurrent() {
     if (!currentSessionId) return;
@@ -580,8 +597,10 @@ export default function ProjectChatPage({ params }: { params: Promise<{ id: stri
               }
               const isLastAssistant = m.id === lastAssistantId;
               let suggestions: string[] = [];
+              let choices: string[] = [];
               if (isLastAssistant) {
                 try { suggestions = JSON.parse(m.suggestions_json ?? '[]'); } catch { /* ignore */ }
+                try { choices = JSON.parse(m.choices_json ?? '[]'); } catch { /* ignore */ }
               }
               return (
                 <ChatMessage
@@ -589,6 +608,7 @@ export default function ProjectChatPage({ params }: { params: Promise<{ id: stri
                   role={m.role}
                   blocks={blocks}
                   suggestions={isLastAssistant ? suggestions : undefined}
+                  choices={isLastAssistant ? choices : undefined}
                   suggestionsLoading={isLastAssistant && !streamingBlocks ? suggestionsLoading : false}
                 />
               );

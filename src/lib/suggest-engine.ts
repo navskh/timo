@@ -4,48 +4,66 @@ import {
   getSession,
   getMessages,
   setMessageSuggestions,
+  setMessageChoices,
   getLastAssistantMessage,
 } from './db/queries/chat';
 
+export interface ISuggestResult {
+  /** Concrete answer strings when the assistant asked the user to pick. */
+  choices: string[];
+  /** Generic follow-ups (only set when there are no choices). */
+  suggestions: string[];
+}
+
 /**
- * Given a session, generate 3 follow-up prompt suggestions for the user and
- * attach them to the most recent assistant message. Uses a fast/cheap model
- * (sonnet) to keep cost + latency down, and because Sonnet is metered in a
- * separate bucket from Opus so the user's main quota is preserved.
+ * Given a session, decide whether the last assistant message ended with a
+ * "pick one" question and, if so, extract the answer options. Otherwise,
+ * generate 3 generic follow-up prompts. Both are persisted to the assistant
+ * message; the UI renders choices as immediate-send buttons when present,
+ * suggestions as fill-the-composer chips otherwise.
+ *
+ * Uses sonnet (cheap, separate quota bucket) to keep this off the user's
+ * main Opus budget.
  */
-export async function generateSuggestions(sessionId: string): Promise<string[]> {
+export async function generateSuggestions(sessionId: string): Promise<ISuggestResult> {
   const session = getSession(sessionId);
   if (!session) throw new Error('session not found');
   const project = getProject(session.project_id);
   if (!project) throw new Error('project not found');
 
   const last = getLastAssistantMessage(sessionId);
-  if (!last) return [];
+  if (!last) return { choices: [], suggestions: [] };
 
   const history = getMessages(sessionId).slice(-6);
   const lastUser = [...history].reverse().find((m) => m.role === 'user');
 
   const prompt = [
-    'You are TIMO\'s follow-up suggestion engine. Output ONLY a JSON array of 3 strings, no other text.',
+    'You are TIMO\'s follow-up engine. Output ONLY a JSON object with two arrays, no other text.',
     '',
     `Project: ${project.name}${project.description ? ` — ${project.description}` : ''}`,
     '',
     'Latest exchange:',
     lastUser ? `User: ${truncate(lastUser.content, 400)}` : '',
-    `TIMO: ${truncate(last.content, 1200)}`,
+    `TIMO: ${truncate(last.content, 1500)}`,
     '',
-    'Suggest 3 natural follow-up prompts the user might send next.',
-    'Make them DIVERSE across these three intents (in order):',
+    '## Decision 1 — Did TIMO end by asking the user to pick from concrete options?',
+    'YES only when TIMO presented discrete, named choices (e.g. "A or B?", "1) X / 2) Y / 3) Z", "이대로 진행할까요 아니면 ...로 갈까요?").',
+    'NO for open-ended questions ("어떻게 할까요?"), confirmations ("이대로 가도 될까요?" without an alternative), or pure status reports.',
+    '',
+    'If YES — fill `choices` with the answer strings the user would actually send back (Korean, short, what they\'d type). Up to 5. Leave `suggestions` as [].',
+    'If NO — leave `choices` as []. Fill `suggestions` with 3 follow-ups (see below).',
+    '',
+    '## Suggestions format (only when choices is empty)',
+    'Generate 3 diverse follow-ups, in this order:',
     '  1. 진행(Proceed) — move to the next implementation step',
     '  2. 검증(Verify) — review/test/double-check what was just done',
-    '  3. 대안(Alternative) — explore a different angle, deeper analysis, or what-if',
+    '  3. 대안(Alternative) — explore a different angle, deeper analysis, what-if',
     '',
-    'Constraints:',
-    '- Korean, natural casual tone like "이거 ~해줘" / "~했어?" 등',
-    '- 20–60 characters each',
+    '## Common constraints',
+    '- Korean, natural casual tone',
+    '- choices: 5–50 chars; suggestions: 20–60 chars',
     '- Do not repeat what TIMO already answered',
-    '- No trailing punctuation if unnecessary',
-    '- Output strictly: ["...", "...", "..."]',
+    '- Output strictly: {"choices":[...],"suggestions":[...]}',
   ].join('\n');
 
   let text: string;
@@ -55,15 +73,26 @@ export async function generateSuggestions(sessionId: string): Promise<string[]> 
       timeoutMs: 30_000,
     });
   } catch {
-    return [];
+    return { choices: [], suggestions: [] };
   }
 
-  const suggestions = extractJsonArray(text);
-  if (suggestions.length === 0) return [];
+  const parsed = extractJsonObject(text);
+  const choicesRaw = Array.isArray(parsed?.choices) ? parsed.choices : [];
+  const suggestionsRaw = Array.isArray(parsed?.suggestions) ? parsed.suggestions : [];
 
-  const top3 = suggestions.slice(0, 3).map((s) => String(s).trim()).filter(Boolean);
-  setMessageSuggestions(last.id, top3);
-  return top3;
+  const choices = choicesRaw
+    .map((s) => String(s).trim())
+    .filter(Boolean)
+    .slice(0, 5);
+  // When choices are present we suppress suggestions so the UI shows one
+  // clear action surface. When choices is empty, suggestions kick in.
+  const suggestions = choices.length > 0
+    ? []
+    : suggestionsRaw.map((s) => String(s).trim()).filter(Boolean).slice(0, 3);
+
+  setMessageChoices(last.id, choices);
+  setMessageSuggestions(last.id, suggestions);
+  return { choices, suggestions };
 }
 
 function truncate(s: string, max: number): string {
@@ -72,35 +101,33 @@ function truncate(s: string, max: number): string {
   return s.slice(0, max) + '…';
 }
 
-/** Pull the first top-level JSON array out of the LLM's output, tolerating
+/** Pull the first top-level JSON object out of the LLM's output, tolerating
  *  stray prefixes/code-fences/explanations. */
-function extractJsonArray(raw: string): string[] {
-  if (!raw) return [];
-  // Strip code fences first.
+function extractJsonObject(raw: string): { choices?: unknown[]; suggestions?: unknown[] } | null {
+  if (!raw) return null;
   const cleaned = raw
     .replace(/```json\s*/gi, '')
     .replace(/```\s*/g, '')
     .trim();
 
-  // Find first `[` and matching `]`.
-  const start = cleaned.indexOf('[');
-  if (start === -1) return [];
+  const start = cleaned.indexOf('{');
+  if (start === -1) return null;
   let depth = 0;
   let end = -1;
   for (let i = start; i < cleaned.length; i++) {
     const ch = cleaned[i];
-    if (ch === '[') depth++;
-    else if (ch === ']') {
+    if (ch === '{') depth++;
+    else if (ch === '}') {
       depth--;
       if (depth === 0) { end = i; break; }
     }
   }
-  if (end === -1) return [];
+  if (end === -1) return null;
   const slice = cleaned.slice(start, end + 1);
   try {
     const parsed = JSON.parse(slice);
-    return Array.isArray(parsed) ? parsed : [];
+    return typeof parsed === 'object' && parsed !== null ? parsed : null;
   } catch {
-    return [];
+    return null;
   }
 }

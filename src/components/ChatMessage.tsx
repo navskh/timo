@@ -12,11 +12,14 @@ interface Props {
   streaming?: boolean;
   /** Follow-up suggestions shown under the last assistant turn only. */
   suggestions?: string[];
+  /** Concrete answer choices when the assistant ended with a "pick one" — UI
+   *  renders these as immediate-send buttons (no compose step). */
+  choices?: string[];
   /** True if suggestions are still generating in the background. */
   suggestionsLoading?: boolean;
 }
 
-export function ChatMessage({ role, blocks, streaming, suggestions, suggestionsLoading }: Props) {
+export function ChatMessage({ role, blocks, streaming, suggestions, choices, suggestionsLoading }: Props) {
   if (role === 'user') {
     const textParts = blocks.filter((b) => b.kind === 'text').map((b) => (b as { content: string }).content);
     const imageBlocks = blocks.filter((b): b is Extract<ChatBlock, { kind: 'image' }> => b.kind === 'image');
@@ -64,9 +67,38 @@ export function ChatMessage({ role, blocks, streaming, suggestions, suggestionsL
           <ClusterRenderer key={i} cluster={cluster} />
         ))}
         {streaming && <div className="text-xs text-[var(--accent)] animate-pulse">● 생각 중…</div>}
-        {!streaming && (suggestions?.length || suggestionsLoading) && (
+        {!streaming && choices && choices.length > 0 && <Choices choices={choices} />}
+        {!streaming && (!choices || choices.length === 0) && (suggestions?.length || suggestionsLoading) && (
           <Suggestions suggestions={suggestions ?? []} loading={suggestionsLoading} />
         )}
+      </div>
+    </div>
+  );
+}
+
+function Choices({ choices }: { choices: string[] }) {
+  return (
+    <div className="pt-1 max-w-[740px]">
+      <div className="flex items-center gap-1.5 text-[10px] mono text-[var(--fg-dim)] mb-2 uppercase tracking-wider">
+        <span>↩</span>
+        <span>이 중에서 골라 보내기 — 클릭하면 바로 전송</span>
+      </div>
+      <div className="flex flex-wrap gap-2">
+        {choices.map((c, i) => (
+          <button
+            key={i}
+            onClick={() => {
+              window.dispatchEvent(
+                new CustomEvent('timo:send-choice', { detail: { text: c } }),
+              );
+            }}
+            className="flex items-center gap-2 max-w-full text-left px-3.5 py-2 rounded-lg border border-[var(--accent-border)] bg-[var(--accent-bg)] hover:bg-[var(--accent)] hover:text-[var(--accent-on)] hover:border-[var(--accent)] text-[var(--accent-soft)] text-[13px] font-medium transition shadow-sm"
+            title="클릭해서 즉시 전송"
+          >
+            <span className="text-[var(--accent)] group-hover:text-[var(--accent-on)]">▸</span>
+            <span className="leading-relaxed">{c}</span>
+          </button>
+        ))}
       </div>
     </div>
   );

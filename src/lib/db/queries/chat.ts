@@ -48,6 +48,12 @@ export function setMessageSuggestions(messageId: string, suggestions: string[]):
     .run(JSON.stringify(suggestions ?? []), messageId);
 }
 
+export function setMessageChoices(messageId: string, choices: string[]): void {
+  getDb()
+    .prepare(`UPDATE chat_messages SET choices_json = ? WHERE id = ?`)
+    .run(JSON.stringify(choices ?? []), messageId);
+}
+
 export function getLastAssistantMessage(sessionId: string): IChatMessage | undefined {
   return getDb()
     .prepare(
