@@ -242,8 +242,170 @@ function CodeBlock({ children, ...rest }: HTMLAttributes<HTMLPreElement>) {
   );
 }
 
+/** Structured "ask the user" envelope some skills emit:
+ *  { "questions": [{ question, header?, multiSelect?, options: [{label, description?}] }] }
+ *  Without parsing, the JSON falls through as a code block in the chat —
+ *  this turns it into clickable choice cards instead. */
+interface IQuestionOption {
+  label: string;
+  description?: string;
+}
+interface IQuestion {
+  question: string;
+  header?: string;
+  multiSelect?: boolean;
+  options: IQuestionOption[];
+}
+interface IQuestionsPayload {
+  questions: IQuestion[];
+}
+
+function tryParseQuestionsPayload(raw: string): IQuestionsPayload | null {
+  if (!raw) return null;
+  // Strip code fences and surrounding whitespace; some skills wrap the JSON.
+  const cleaned = raw
+    .replace(/```(?:json)?\s*/gi, '')
+    .replace(/```\s*$/g, '')
+    .trim();
+  if (!cleaned.startsWith('{')) return null;
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(cleaned);
+  } catch {
+    return null;
+  }
+  if (!parsed || typeof parsed !== 'object') return null;
+  const q = (parsed as { questions?: unknown }).questions;
+  if (!Array.isArray(q) || q.length === 0) return null;
+  for (const item of q) {
+    if (!item || typeof item !== 'object') return null;
+    const it = item as Partial<IQuestion>;
+    if (typeof it.question !== 'string' || !Array.isArray(it.options)) return null;
+    for (const opt of it.options) {
+      if (!opt || typeof opt !== 'object') return null;
+      if (typeof (opt as IQuestionOption).label !== 'string') return null;
+    }
+  }
+  return parsed as IQuestionsPayload;
+}
+
+function dispatchChoice(text: string) {
+  window.dispatchEvent(new CustomEvent('timo:send-choice', { detail: { text } }));
+}
+
+function QuestionsPanel({ payload }: { payload: IQuestionsPayload }) {
+  return (
+    <div className="space-y-4 max-w-[740px]">
+      {payload.questions.map((q, idx) => (
+        <QuestionCard key={idx} question={q} />
+      ))}
+    </div>
+  );
+}
+
+function QuestionCard({ question }: { question: IQuestion }) {
+  const [picked, setPicked] = useState<Set<number>>(new Set());
+  const multi = !!question.multiSelect;
+
+  function pickedAnswerText(indices: number[]): string {
+    const labels = indices.map((i) => question.options[i].label).filter(Boolean);
+    const head = question.header ? `${question.header}: ` : '';
+    return `${head}${labels.join(', ')}`;
+  }
+
+  function onPick(i: number) {
+    if (multi) {
+      setPicked((prev) => {
+        const next = new Set(prev);
+        if (next.has(i)) next.delete(i);
+        else next.add(i);
+        return next;
+      });
+      return;
+    }
+    dispatchChoice(pickedAnswerText([i]));
+  }
+
+  function onSubmitMulti() {
+    if (picked.size === 0) return;
+    dispatchChoice(pickedAnswerText([...picked].sort((a, b) => a - b)));
+  }
+
+  return (
+    <div className="border border-[var(--border)] rounded-xl bg-[var(--surface-2)] overflow-hidden">
+      {question.header && (
+        <div className="px-4 pt-3 text-[10px] mono uppercase tracking-wider text-[var(--fg-dim)]">
+          {question.header}
+        </div>
+      )}
+      <div className="px-4 pt-1 pb-3 text-[14px] font-medium text-[var(--foreground)]">
+        {question.question}
+      </div>
+      <ul className="divide-y divide-[var(--border)] border-t border-[var(--border)]">
+        {question.options.map((opt, i) => {
+          const isPicked = picked.has(i);
+          return (
+            <li key={i}>
+              <button
+                onClick={() => onPick(i)}
+                className={`w-full text-left px-4 py-3 transition flex items-start gap-3 ${
+                  multi
+                    ? isPicked
+                      ? 'bg-[var(--accent-bg)]'
+                      : 'hover:bg-[var(--surface-3)]'
+                    : 'hover:bg-[var(--accent-bg)]'
+                }`}
+              >
+                <span
+                  className={`shrink-0 mt-0.5 w-4 h-4 rounded ${multi ? 'border' : 'rounded-full border'} flex items-center justify-center text-[10px] transition ${
+                    multi && isPicked
+                      ? 'bg-[var(--accent)] border-[var(--accent)] text-[var(--accent-on)]'
+                      : 'border-[var(--border-strong)]'
+                  }`}
+                  aria-hidden
+                >
+                  {multi && isPicked ? '✓' : ''}
+                </span>
+                <span className="flex-1 min-w-0">
+                  <span className={`block text-[13px] ${
+                    multi && isPicked ? 'text-[var(--accent-soft)] font-medium' : 'text-[var(--foreground)] font-medium'
+                  }`}>
+                    {opt.label}
+                  </span>
+                  {opt.description && (
+                    <span className="block mt-1 text-[12px] text-[var(--fg-muted)] leading-relaxed">
+                      {opt.description}
+                    </span>
+                  )}
+                </span>
+              </button>
+            </li>
+          );
+        })}
+      </ul>
+      {multi && (
+        <div className="px-4 py-2 border-t border-[var(--border)] bg-[var(--surface-1)] flex items-center justify-between">
+          <span className="text-[11px] mono text-[var(--fg-dim)]">
+            {picked.size}개 선택됨
+          </span>
+          <button
+            onClick={onSubmitMulti}
+            disabled={picked.size === 0}
+            className="px-3 py-1 rounded-md bg-[var(--accent)] hover:bg-[var(--accent-strong)] text-[var(--accent-on)] text-xs font-medium transition disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            보내기 →
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function ClusterRenderer({ cluster }: { cluster: Cluster }) {
   if (cluster.kind === 'text') {
+    // Detect structured questions envelope first — render as interactive cards.
+    const questions = tryParseQuestionsPayload(cluster.block.content);
+    if (questions) return <QuestionsPanel payload={questions} />;
     return (
       <div className="md-body text-[15px] text-[var(--foreground)] leading-[1.75] max-w-[740px]">
         <ReactMarkdown
