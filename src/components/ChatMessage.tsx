@@ -260,24 +260,24 @@ interface IQuestionsPayload {
   questions: IQuestion[];
 }
 
-function tryParseQuestionsPayload(raw: string): IQuestionsPayload | null {
-  if (!raw) return null;
-  // Strip code fences and surrounding whitespace; some skills wrap the JSON.
-  const cleaned = raw
-    .replace(/```(?:json)?\s*/gi, '')
-    .replace(/```\s*$/g, '')
-    .trim();
-  if (!cleaned.startsWith('{')) return null;
-  let parsed: unknown;
-  try {
-    parsed = JSON.parse(cleaned);
-  } catch {
+/** Accept either:
+ *  - `{ questions: [{...}, ...] }`  (multi-question envelope)
+ *  - `{ question, options, multiSelect?, header? }`  (single question, used by
+ *    Claude's AskUserQuestion tool input)
+ *  ...as long as every option has a string `label`. Returns null otherwise. */
+function normalizeQuestionsPayload(parsed: unknown): IQuestionsPayload | null {
+  if (!parsed || typeof parsed !== 'object') return null;
+  const obj = parsed as Record<string, unknown>;
+  let list: unknown[];
+  if (Array.isArray(obj.questions)) {
+    list = obj.questions;
+  } else if (typeof obj.question === 'string' && Array.isArray(obj.options)) {
+    list = [obj];
+  } else {
     return null;
   }
-  if (!parsed || typeof parsed !== 'object') return null;
-  const q = (parsed as { questions?: unknown }).questions;
-  if (!Array.isArray(q) || q.length === 0) return null;
-  for (const item of q) {
+  if (list.length === 0) return null;
+  for (const item of list) {
     if (!item || typeof item !== 'object') return null;
     const it = item as Partial<IQuestion>;
     if (typeof it.question !== 'string' || !Array.isArray(it.options)) return null;
@@ -286,7 +286,22 @@ function tryParseQuestionsPayload(raw: string): IQuestionsPayload | null {
       if (typeof (opt as IQuestionOption).label !== 'string') return null;
     }
   }
-  return parsed as IQuestionsPayload;
+  return { questions: list as IQuestion[] };
+}
+
+function tryParseQuestionsPayload(raw: string): IQuestionsPayload | null {
+  if (!raw) return null;
+  // Strip code fences and surrounding whitespace; some skills wrap the JSON.
+  const cleaned = raw
+    .replace(/```(?:json)?\s*/gi, '')
+    .replace(/```\s*$/g, '')
+    .trim();
+  if (!cleaned.startsWith('{')) return null;
+  try {
+    return normalizeQuestionsPayload(JSON.parse(cleaned));
+  } catch {
+    return null;
+  }
 }
 
 function dispatchChoice(text: string) {
@@ -495,6 +510,16 @@ function ToolPair({
   use: Extract<ChatBlock, { kind: 'tool_use' }>;
   result?: Extract<ChatBlock, { kind: 'tool_result' }>;
 }) {
+  // AskUserQuestion comes through as a tool_use that always errors out in our
+  // permission-skipped setup (claude has no built-in mechanism to wait for a
+  // user response). Hijack the rendering: parse the input as a question
+  // payload and surface the interactive choice cards directly so the user can
+  // actually answer instead of staring at an error block.
+  if (use.name === 'AskUserQuestion' || use.name === 'ask_user_question') {
+    const payload = normalizeQuestionsPayload(use.input);
+    if (payload) return <QuestionsPanel payload={payload} />;
+  }
+
   const preview = toolPreview(use.name, use.input);
   const isTodo = use.name === 'TodoWrite' || use.name === 'todo_write';
   const isError = result?.isError;
