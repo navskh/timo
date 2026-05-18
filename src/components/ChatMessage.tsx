@@ -348,26 +348,47 @@ function dispatchChoice(text: string) {
 }
 
 function QuestionsPanel({ payload }: { payload: IQuestionsPayload }) {
+  const multiQuestion = payload.questions.length > 1;
   return (
     <div className="space-y-4 max-w-[740px]">
       {payload.questions.map((q, idx) => (
-        <QuestionCard key={idx} question={q} />
+        <QuestionCard key={idx} question={q} multiQuestionPanel={multiQuestion} />
       ))}
     </div>
   );
 }
 
-function QuestionCard({ question }: { question: IQuestion }) {
+function QuestionCard({
+  question,
+  multiQuestionPanel,
+}: {
+  question: IQuestion;
+  /** True when the panel contains more than one question — controls whether
+   *  the dispatched answer needs a header prefix to disambiguate. */
+  multiQuestionPanel: boolean;
+}) {
   const [picked, setPicked] = useState<Set<number>>(new Set());
+  /** Indices that have already been dispatched. Locks further clicks so the
+   *  user can't double-submit and trigger two parallel turns. */
+  const [submitted, setSubmitted] = useState<Set<number> | null>(null);
   const multi = !!question.multiSelect;
+  const isLocked = submitted !== null;
 
   function pickedAnswerText(indices: number[]): string {
     const labels = indices.map((i) => question.options[i].label).filter(Boolean);
-    const head = question.header ? `${question.header}: ` : '';
-    return `${head}${labels.join(', ')}`;
+    // Only prefix with the header when the panel actually has multiple
+    // questions — for a single question the surrounding history already gives
+    // claude all the context it needs, and a bare label keeps the user
+    // message tight (less likely to trigger a "let me restate the plan from
+    // scratch" reply).
+    if (multiQuestionPanel && question.header) {
+      return `${question.header}: ${labels.join(', ')}`;
+    }
+    return labels.join(', ');
   }
 
   function onPick(i: number) {
+    if (isLocked) return;
     if (multi) {
       setPicked((prev) => {
         const next = new Set(prev);
@@ -377,16 +398,22 @@ function QuestionCard({ question }: { question: IQuestion }) {
       });
       return;
     }
+    setSubmitted(new Set([i]));
     dispatchChoice(pickedAnswerText([i]));
   }
 
   function onSubmitMulti() {
-    if (picked.size === 0) return;
+    if (isLocked || picked.size === 0) return;
+    setSubmitted(new Set(picked));
     dispatchChoice(pickedAnswerText([...picked].sort((a, b) => a - b)));
   }
 
   return (
-    <div className="border border-[var(--border)] rounded-xl bg-[var(--surface-2)] overflow-hidden">
+    <div className={`border rounded-xl overflow-hidden transition ${
+      isLocked
+        ? 'border-[var(--accent-border)] bg-[var(--accent-tint)]'
+        : 'border-[var(--border)] bg-[var(--surface-2)]'
+    }`}>
       {question.header && (
         <div className="px-4 pt-3 text-[10px] mono uppercase tracking-wider text-[var(--fg-dim)]">
           {question.header}
@@ -398,27 +425,34 @@ function QuestionCard({ question }: { question: IQuestion }) {
       <ul className="divide-y divide-[var(--border)] border-t border-[var(--border)]">
         {question.options.map((opt, i) => {
           const isPicked = picked.has(i);
+          const isSubmittedHere = submitted?.has(i) ?? false;
           return (
             <li key={i}>
               <button
+                type="button"
+                disabled={isLocked && !isSubmittedHere}
                 onClick={() => onPick(i)}
                 className={`w-full text-left px-4 py-3 transition flex items-start gap-3 ${
-                  multi
-                    ? isPicked
-                      ? 'bg-[var(--accent-bg)]'
-                      : 'hover:bg-[var(--surface-3)]'
-                    : 'hover:bg-[var(--accent-bg)]'
+                  isSubmittedHere
+                    ? 'bg-[var(--accent-bg)]'
+                    : isLocked
+                      ? 'opacity-50 cursor-not-allowed'
+                      : multi
+                        ? isPicked
+                          ? 'bg-[var(--accent-bg)]'
+                          : 'hover:bg-[var(--surface-3)]'
+                        : 'hover:bg-[var(--accent-bg)]'
                 }`}
               >
                 <span
                   className={`shrink-0 mt-0.5 w-4 h-4 rounded ${multi ? 'border' : 'rounded-full border'} flex items-center justify-center text-[10px] transition ${
-                    multi && isPicked
+                    isSubmittedHere || (multi && isPicked)
                       ? 'bg-[var(--accent)] border-[var(--accent)] text-[var(--accent-on)]'
                       : 'border-[var(--border-strong)]'
                   }`}
                   aria-hidden
                 >
-                  {multi && isPicked ? '✓' : ''}
+                  {isSubmittedHere || (multi && isPicked) ? '✓' : ''}
                 </span>
                 <span className="flex-1 min-w-0">
                   <span className={`block text-[13px] ${

@@ -56,7 +56,16 @@ export default function ProjectChatPage({ params }: { params: Promise<{ id: stri
       ? `/api/sessions/${sid}/messages?include=archived`
       : `/api/sessions/${sid}/messages`;
     const r = await fetch(url).then((r) => r.json());
-    setMessages(r.messages ?? []);
+    const next: IChatMessage[] = r.messages ?? [];
+    setMessages((prev) => {
+      // Safety: if the server returned an empty list but we already had
+      // messages cached for this session, keep what we have. This guards
+      // against a transient bad response (or a wrong-session race) silently
+      // wiping the chat history. The real "this session is empty" case is
+      // covered by the initial mount having prev=[] anyway.
+      if (next.length === 0 && prev.length > 0) return prev;
+      return next;
+    });
     setArchivedCount(typeof r.archivedCount === 'number' ? r.archivedCount : 0);
   }, []);
 
