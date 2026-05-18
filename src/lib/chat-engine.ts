@@ -103,12 +103,25 @@ function buildPrompt(
   parts.push(`\n# Current user message\n${newUserText}`);
 
   if (attachments.length > 0) {
-    parts.push('\n# Attached images');
-    parts.push(
-      '사용자가 아래 이미지를 첨부했습니다. **Read 툴로 각 파일을 읽어서** 내용을 분석하고 요청에 반영하세요:',
-    );
-    for (const a of attachments) {
-      parts.push(`- ${a.path}  (${a.name}, ${a.mime}, ${Math.round(a.size / 1024)}KB)`);
+    const images = attachments.filter((a) => a.mime.startsWith('image/'));
+    const files = attachments.filter((a) => !a.mime.startsWith('image/'));
+    if (images.length > 0) {
+      parts.push('\n# Attached images');
+      parts.push(
+        '사용자가 아래 이미지를 첨부했습니다. **Read 툴로 각 파일을 읽어서** 내용을 분석하고 요청에 반영하세요:',
+      );
+      for (const a of images) {
+        parts.push(`- ${a.path}  (${a.name}, ${a.mime}, ${Math.round(a.size / 1024)}KB)`);
+      }
+    }
+    if (files.length > 0) {
+      parts.push('\n# Attached files');
+      parts.push(
+        '사용자가 아래 파일을 첨부했습니다. **Read 툴로 각 파일을 읽어서** 내용을 파악한 뒤 요청에 반영하세요. 확장자가 텍스트 기반이면 그대로 읽고, 바이너리면 적절한 도구를 쓰세요:',
+      );
+      for (const a of files) {
+        parts.push(`- ${a.path}  (${a.name}, ${a.mime || 'unknown'}, ${Math.round(a.size / 1024)}KB)`);
+      }
     }
   }
 
@@ -136,11 +149,24 @@ export async function runChatTurn(
     title: session.title,
   });
 
-  // Build user message blocks: text first, then image thumbnails.
+  // Build user message blocks: text first, then attachments. Images get a
+  // thumbnail block; everything else gets a generic file chip that the
+  // ChatMessage renderer shows as a clickable card with name + size.
   const userBlocks: ChatBlock[] = [];
   if (userText.trim()) userBlocks.push({ kind: 'text', content: userText });
   for (const a of attachments) {
-    userBlocks.push({ kind: 'image', url: a.url, name: a.name, path: a.path });
+    if (a.mime.startsWith('image/')) {
+      userBlocks.push({ kind: 'image', url: a.url, name: a.name, path: a.path });
+    } else {
+      userBlocks.push({
+        kind: 'file',
+        url: a.url,
+        name: a.name,
+        path: a.path,
+        mime: a.mime,
+        size: a.size,
+      });
+    }
   }
   if (userBlocks.length === 0) userBlocks.push({ kind: 'text', content: '' });
 

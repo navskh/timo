@@ -13,12 +13,21 @@ export async function POST(req: NextRequest, { params }: Ctx) {
   const { sid } = await params;
   const body = await req.json();
   const text = typeof body?.text === 'string' ? body.text.trim() : '';
-  const rawAttachments = Array.isArray(body?.attachments) ? body.attachments : [];
+  const rawAttachments: unknown[] = Array.isArray(body?.attachments) ? body.attachments : [];
   const attachments: IAttachment[] = rawAttachments
-    .filter((a: unknown): a is IAttachment =>
-      !!a && typeof a === 'object' &&
-      typeof (a as { path?: unknown }).path === 'string' &&
-      typeof (a as { url?: unknown }).url === 'string')
+    .filter((a): a is Record<string, unknown> =>
+      !!a &&
+      typeof a === 'object' &&
+      typeof (a as Record<string, unknown>).path === 'string' &&
+      typeof (a as Record<string, unknown>).url === 'string',
+    )
+    .map((a) => ({
+      path: a.path as string,
+      url: a.url as string,
+      name: typeof a.name === 'string' ? a.name : 'file',
+      size: typeof a.size === 'number' ? a.size : 0,
+      mime: typeof a.mime === 'string' ? a.mime : '',
+    }))
     .slice(0, 20);
 
   if (!text && attachments.length === 0) {

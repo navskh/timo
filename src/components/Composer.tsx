@@ -100,12 +100,8 @@ export function Composer({ running, onSend, onStop }: Props) {
   }
 
   async function uploadFiles(files: File[]) {
-    const images = files.filter((f) => f.type.startsWith('image/'));
-    if (images.length === 0 && files.length > 0) {
-      toast.error('이미지 파일만 지원합니다.');
-      return;
-    }
-    for (const f of images) {
+    if (files.length === 0) return;
+    for (const f of files) {
       setUploading((n) => n + 1);
       try {
         const form = new FormData();
@@ -248,27 +244,46 @@ export function Composer({ running, onSend, onStop }: Props) {
       {/* Attachment thumbnails */}
       {(attachments.length > 0 || uploading > 0) && (
         <div className="flex flex-wrap gap-2 mb-2">
-          {attachments.map((a, i) => (
-            <div
-              key={a.path}
-              className="relative group border border-[var(--border)] rounded-md overflow-hidden bg-[var(--surface-2)]"
-            >
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={a.url}
-                alt={a.name}
-                className="w-16 h-16 object-cover"
-              />
-              <button
-                type="button"
-                onClick={() => removeAttachment(i)}
-                className="absolute top-0.5 right-0.5 w-5 h-5 rounded-full bg-black/70 text-white text-xs leading-none opacity-0 group-hover:opacity-100 transition hover:bg-[var(--danger)]"
-                title="제거"
+          {attachments.map((a, i) => {
+            const isImage = a.mime.startsWith('image/');
+            return (
+              <div
+                key={a.path}
+                className={`relative group border border-[var(--border)] rounded-md overflow-hidden bg-[var(--surface-2)] ${
+                  isImage ? '' : 'min-w-[180px] max-w-[260px]'
+                }`}
               >
-                ×
-              </button>
-            </div>
-          ))}
+                {isImage ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={a.url}
+                    alt={a.name}
+                    className="w-16 h-16 object-cover"
+                  />
+                ) : (
+                  <div className="px-3 py-2 flex items-center gap-2 w-full">
+                    <span className="text-lg shrink-0">📄</span>
+                    <span className="flex-1 min-w-0">
+                      <span className="block text-xs text-[var(--foreground)] truncate" title={a.name}>
+                        {a.name}
+                      </span>
+                      <span className="block text-[10px] mono text-[var(--fg-dim)]">
+                        {formatSize(a.size)}
+                      </span>
+                    </span>
+                  </div>
+                )}
+                <button
+                  type="button"
+                  onClick={() => removeAttachment(i)}
+                  className="absolute top-0.5 right-0.5 w-5 h-5 rounded-full bg-black/70 text-white text-xs leading-none opacity-0 group-hover:opacity-100 transition hover:bg-[var(--danger)]"
+                  title="제거"
+                >
+                  ×
+                </button>
+              </div>
+            );
+          })}
           {uploading > 0 && (
             <div className="w-16 h-16 border border-[var(--border)] rounded-md flex items-center justify-center text-xs text-[var(--fg-dim)] animate-pulse bg-[var(--surface-2)]">
               업로드…
@@ -280,7 +295,7 @@ export function Composer({ running, onSend, onStop }: Props) {
       {/* Drag overlay */}
       {dragOver && (
         <div className="absolute inset-0 z-10 border-2 border-dashed border-[var(--accent)] rounded-lg bg-[var(--accent-bg)] flex items-center justify-center pointer-events-none text-sm text-[var(--accent-soft)]">
-          🖼 이미지 드롭해서 첨부
+          📎 파일 드롭해서 첨부 (이미지·문서·코드 등 25MB 이하)
         </div>
       )}
 
@@ -289,14 +304,13 @@ export function Composer({ running, onSend, onStop }: Props) {
           type="button"
           onClick={() => fileInputRef.current?.click()}
           className="h-[60px] w-[44px] flex items-center justify-center rounded-lg border border-[var(--border)] bg-[var(--surface-2)] hover:border-[var(--accent-border)] hover:bg-[var(--surface-3)] disabled:opacity-40 transition text-lg"
-          title="이미지 첨부 (드래그·Ctrl+V도 가능)"
+          title="파일 첨부 (드래그·Ctrl+V도 가능)"
         >
           📎
         </button>
         <input
           ref={fileInputRef}
           type="file"
-          accept="image/*"
           multiple
           onChange={(e) => {
             const files = e.target.files ? [...e.target.files] : [];
@@ -343,4 +357,10 @@ export function Composer({ running, onSend, onStop }: Props) {
       </div>
     </div>
   );
+}
+
+function formatSize(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} KB`;
+  return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
 }

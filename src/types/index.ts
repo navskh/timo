@@ -95,6 +95,7 @@ export interface IAttachment {
 export type ChatBlock =
   | { kind: 'text'; content: string }
   | { kind: 'image'; url: string; name?: string; path?: string }
+  | { kind: 'file'; url: string; name: string; path: string; mime: string; size: number }
   | { kind: 'tool_use'; id?: string; name: string; input: unknown }
   | { kind: 'tool_result'; toolUseId?: string; content: string; isError?: boolean }
   | { kind: 'system'; content: string }

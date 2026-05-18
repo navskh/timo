@@ -6,6 +6,7 @@ import { getUploadsDir } from '@/lib/utils/paths';
 type Ctx = { params: Promise<{ rest: string[] }> };
 
 const MIME: Record<string, string> = {
+  // images
   '.png': 'image/png',
   '.jpg': 'image/jpeg',
   '.jpeg': 'image/jpeg',
@@ -13,6 +14,36 @@ const MIME: Record<string, string> = {
   '.gif': 'image/gif',
   '.heic': 'image/heic',
   '.heif': 'image/heif',
+  '.svg': 'image/svg+xml',
+  // text / code
+  '.txt': 'text/plain; charset=utf-8',
+  '.md': 'text/markdown; charset=utf-8',
+  '.csv': 'text/csv; charset=utf-8',
+  '.tsv': 'text/tab-separated-values; charset=utf-8',
+  '.log': 'text/plain; charset=utf-8',
+  '.json': 'application/json; charset=utf-8',
+  '.xml': 'application/xml; charset=utf-8',
+  '.yaml': 'text/yaml; charset=utf-8',
+  '.yml': 'text/yaml; charset=utf-8',
+  '.toml': 'text/plain; charset=utf-8',
+  '.ini': 'text/plain; charset=utf-8',
+  '.html': 'text/html; charset=utf-8',
+  '.css': 'text/css; charset=utf-8',
+  '.js': 'text/javascript; charset=utf-8',
+  '.mjs': 'text/javascript; charset=utf-8',
+  '.cjs': 'text/javascript; charset=utf-8',
+  '.ts': 'text/typescript; charset=utf-8',
+  '.tsx': 'text/typescript; charset=utf-8',
+  '.jsx': 'text/javascript; charset=utf-8',
+  '.py': 'text/x-python; charset=utf-8',
+  '.rs': 'text/x-rust; charset=utf-8',
+  '.go': 'text/x-go; charset=utf-8',
+  '.java': 'text/x-java; charset=utf-8',
+  '.rb': 'text/x-ruby; charset=utf-8',
+  '.sql': 'text/x-sql; charset=utf-8',
+  // docs / data
+  '.pdf': 'application/pdf',
+  '.zip': 'application/zip',
 };
 
 export async function GET(_req: NextRequest, { params }: Ctx) {

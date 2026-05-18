@@ -4,7 +4,9 @@ import path from 'node:path';
 import { getUploadsDir } from '@/lib/utils/paths';
 import { generateId } from '@/lib/utils/id';
 
-const ALLOWED_MIME = new Set([
+// Images get a special render path (thumbnail + Read hint as image). Everything
+// else gets rendered as a file chip and Read'd as text/binary by claude.
+const IMAGE_MIME = new Set([
   'image/png',
   'image/jpeg',
   'image/webp',
@@ -13,7 +15,15 @@ const ALLOWED_MIME = new Set([
   'image/heif',
 ]);
 
-const MAX_BYTES = 10 * 1024 * 1024; // 10MB
+const MAX_BYTES = 25 * 1024 * 1024; // 25MB
+
+// Block obvious executables so a stray drop doesn't put binaries in
+// ~/.timo/uploads. Source code / docs / data / archives are all fine.
+const BLOCKED_EXT = new Set([
+  '.exe', '.dll', '.bat', '.cmd', '.com', '.scr', '.msi',
+  '.app', '.dmg', '.pkg',
+  '.sh', '.bash', '.zsh', '.fish', '.ps1',
+]);
 
 function extFromMime(mime: string): string {
   if (mime === 'image/jpeg') return '.jpg';
@@ -30,15 +40,16 @@ export async function POST(req: NextRequest) {
   if (!(file instanceof File)) {
     return NextResponse.json({ error: 'file field required' }, { status: 400 });
   }
-  if (!ALLOWED_MIME.has(file.type)) {
+  const lowerExt = path.extname(file.name).toLowerCase();
+  if (BLOCKED_EXT.has(lowerExt)) {
     return NextResponse.json(
-      { error: `이미지 파일만 가능 (현재: ${file.type || 'unknown'})` },
+      { error: `실행 가능한 확장자는 첨부 불가 (${lowerExt})` },
       { status: 400 },
     );
   }
   if (file.size > MAX_BYTES) {
     return NextResponse.json(
-      { error: `10MB 이하만 가능 (현재: ${Math.round(file.size / 1024 / 1024)}MB)` },
+      { error: `25MB 이하만 가능 (현재: ${Math.round(file.size / 1024 / 1024)}MB)` },
       { status: 400 },
     );
   }
@@ -49,7 +60,10 @@ export async function POST(req: NextRequest) {
   const subDir = path.join(getUploadsDir(), yyyy, mm);
   fs.mkdirSync(subDir, { recursive: true });
 
-  const ext = extFromMime(file.type) || path.extname(file.name) || '.bin';
+  // Prefer the original extension when available — it's the strongest hint for
+  // claude when it reads the file (e.g. `.ts`, `.json`, `.md`). Fall back to a
+  // mime mapping only for images, where the browser may strip the ext.
+  const ext = path.extname(file.name) || extFromMime(file.type) || '.bin';
   const id = generateId();
   const filename = `${id}${ext}`;
   const abs = path.join(subDir, filename);
@@ -66,5 +80,6 @@ export async function POST(req: NextRequest) {
     name: file.name,
     size: file.size,
     mime: file.type,
+    isImage: IMAGE_MIME.has(file.type),
   }, { status: 201 });
 }

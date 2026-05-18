@@ -23,6 +23,7 @@ export function ChatMessage({ role, blocks, streaming, suggestions, choices, sug
   if (role === 'user') {
     const textParts = blocks.filter((b) => b.kind === 'text').map((b) => (b as { content: string }).content);
     const imageBlocks = blocks.filter((b): b is Extract<ChatBlock, { kind: 'image' }> => b.kind === 'image');
+    const fileBlocks = blocks.filter((b): b is Extract<ChatBlock, { kind: 'file' }> => b.kind === 'file');
     const text = textParts.join('\n');
     return (
       <div className="flex justify-end px-2">
@@ -41,6 +42,13 @@ export function ChatMessage({ role, blocks, streaming, suggestions, choices, sug
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img src={img.url} alt={img.name ?? ''} className="max-w-[240px] max-h-[200px] object-cover" />
                 </a>
+              ))}
+            </div>
+          )}
+          {fileBlocks.length > 0 && (
+            <div className="flex flex-wrap gap-2 justify-end">
+              {fileBlocks.map((f, i) => (
+                <FileChip key={i} block={f} />
               ))}
             </div>
           )}
@@ -151,6 +159,7 @@ function AssistantAvatar() {
 type Cluster =
   | { kind: 'text'; block: Extract<ChatBlock, { kind: 'text' }> }
   | { kind: 'image'; block: Extract<ChatBlock, { kind: 'image' }> }
+  | { kind: 'file'; block: Extract<ChatBlock, { kind: 'file' }> }
   | { kind: 'note'; block: Extract<ChatBlock, { kind: 'system' } | { kind: 'error' }> }
   | { kind: 'tools'; blocks: Array<Extract<ChatBlock, { kind: 'tool_use' } | { kind: 'tool_result' }>> };
 
@@ -165,11 +174,41 @@ function buildClusters(blocks: ChatBlock[]): Cluster[] {
       out.push({ kind: 'text', block: b });
     } else if (b.kind === 'image') {
       out.push({ kind: 'image', block: b });
+    } else if (b.kind === 'file') {
+      out.push({ kind: 'file', block: b });
     } else {
       out.push({ kind: 'note', block: b });
     }
   }
   return out;
+}
+
+function formatBytes(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} KB`;
+  return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
+}
+
+function FileChip({ block }: { block: Extract<ChatBlock, { kind: 'file' }> }) {
+  return (
+    <a
+      href={block.url}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="flex items-center gap-2 max-w-[320px] px-3 py-2 rounded-lg border border-[var(--border)] bg-[var(--surface-2)] hover:border-[var(--accent-border)] hover:bg-[var(--surface-3)] transition"
+      title={`${block.name} — 새 탭에서 열기`}
+    >
+      <span className="text-lg shrink-0" aria-hidden>📄</span>
+      <span className="flex-1 min-w-0">
+        <span className="block text-[12px] text-[var(--foreground)] truncate">
+          {block.name}
+        </span>
+        <span className="block text-[10px] mono text-[var(--fg-dim)]">
+          {block.mime || 'file'} · {formatBytes(block.size)}
+        </span>
+      </span>
+    </a>
+  );
 }
 
 /** Force markdown links to open in the system browser instead of navigating
@@ -432,6 +471,9 @@ function ClusterRenderer({ cluster }: { cluster: Cluster }) {
         </ReactMarkdown>
       </div>
     );
+  }
+  if (cluster.kind === 'file') {
+    return <FileChip block={cluster.block} />;
   }
   if (cluster.kind === 'image') {
     return (
